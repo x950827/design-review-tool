@@ -10,6 +10,10 @@ type Comment = {
   viewport: number;
   kind: string;
   selector: string | null;
+  rect_x: number | null;
+  rect_y: number | null;
+  rect_w: number | null;
+  rect_h: number | null;
   body: string;
   status: string;
 };
@@ -42,6 +46,8 @@ export function ReviewApp({ slug }: { slug: string }) {
   const [mode, setMode] = useState<"browse" | "comment" | "rect">("browse");
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<{ kind: "element" | "rect"; selector?: string; reviewId?: string; rect?: object } | null>(null);
+  const [focusedId, setFocusedId] = useState<number | null>(null);
+  const [focusError, setFocusError] = useState("");
   const [error, setError] = useState("");
 
   const iframeSrc = useMemo(() => {
@@ -92,6 +98,9 @@ export function ReviewApp({ slug }: { slug: string }) {
       if (event.data.type === "rect") {
         setPending({ kind: "rect", rect: event.data.rect });
       }
+      if (event.data.type === "focus-result") {
+        setFocusError(event.data.ok ? "" : "Элемент не найден на этой версии");
+      }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -100,6 +109,40 @@ export function ReviewApp({ slug }: { slug: string }) {
   function sendMode(next: typeof mode, frame: HTMLIFrameElement | null) {
     setMode(next);
     frame?.contentWindow?.postMessage({ source: "design-review", type: "set-mode", mode: next }, "*");
+  }
+
+  function previewFrame(): HTMLIFrameElement | null {
+    return document.querySelector("iframe");
+  }
+
+  function revealComment(comment: Comment) {
+    if (comment.kind !== "element" && comment.kind !== "rect") return;
+    setFocusedId(comment.id);
+    setFocusError("");
+    setMode("browse");
+    if ((VIEWPORTS as readonly number[]).includes(comment.viewport)) {
+      setViewport(comment.viewport);
+    }
+    const payload = {
+      source: "design-review",
+      type: "focus-anchor",
+      kind: comment.kind,
+      selector: comment.selector,
+      rect:
+        comment.kind === "rect" && comment.rect_x != null
+          ? {
+              x: comment.rect_x,
+              y: comment.rect_y,
+              w: comment.rect_w,
+              h: comment.rect_h,
+            }
+          : null,
+    };
+    window.setTimeout(() => {
+      const frame = previewFrame();
+      frame?.contentWindow?.postMessage({ source: "design-review", type: "set-mode", mode: "browse" }, "*");
+      frame?.contentWindow?.postMessage(payload, "*");
+    }, 80);
   }
 
   async function onLogin(event: FormEvent) {
@@ -175,13 +218,25 @@ export function ReviewApp({ slug }: { slug: string }) {
             </option>
           ))}
         </select>
-        <button type="button" onClick={(e) => sendMode("browse", (e.currentTarget.closest(".shell") as HTMLElement).querySelector("iframe"))}>
+        <button
+          type="button"
+          className={mode === "browse" ? "active" : ""}
+          onClick={() => sendMode("browse", previewFrame())}
+        >
           Просмотр
         </button>
-        <button type="button" onClick={(e) => sendMode("comment", (e.currentTarget.closest(".shell") as HTMLElement).querySelector("iframe"))}>
+        <button
+          type="button"
+          className={mode === "comment" ? "active" : ""}
+          onClick={() => sendMode("comment", previewFrame())}
+        >
           Пин
         </button>
-        <button type="button" onClick={(e) => sendMode("rect", (e.currentTarget.closest(".shell") as HTMLElement).querySelector("iframe"))}>
+        <button
+          type="button"
+          className={mode === "rect" ? "active" : ""}
+          onClick={() => sendMode("rect", previewFrame())}
+        >
           Rect
         </button>
         <span>
@@ -190,7 +245,17 @@ export function ReviewApp({ slug }: { slug: string }) {
       </div>
       <div className="frame-wrap">
         {iframeSrc ? (
-          <iframe title="preview" src={iframeSrc} style={{ width: viewport }} />
+          <iframe
+            title="preview"
+            src={iframeSrc}
+            style={{ width: viewport }}
+            onLoad={(event) => {
+              event.currentTarget.contentWindow?.postMessage(
+                { source: "design-review", type: "set-mode", mode },
+                "*",
+              );
+            }}
+          />
         ) : (
           <p>Нет коммитов — админ должен нажать Sync.</p>
         )}
@@ -208,8 +273,17 @@ export function ReviewApp({ slug }: { slug: string }) {
             </button>
           </div>
         ) : null}
+        {focusError ? <p className="error">{focusError}</p> : null}
         {comments.map((comment) => (
-          <article className="thread" key={comment.id}>
+          <article
+            className={`thread${focusedId === comment.id ? " focused" : ""}`}
+            key={comment.id}
+            onClick={(event) => {
+              const target = event.target as HTMLElement;
+              if (target.closest("form, button, input, textarea, a")) return;
+              revealComment(comment);
+            }}
+          >
             <strong>{comment.author_name}</strong>
             <div>{comment.body}</div>
             <small>

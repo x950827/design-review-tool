@@ -70,4 +70,22 @@ export function listReviewers(db: Database.Database, projectId: number) {
     .all(projectId) as { id: number; name: string; disabled: number; created_at: string }[];
 }
 
+export const ADMIN_REVIEWER_NAME = "Админ";
+
+export async function ensureAdminReviewer(
+  db: Database.Database,
+  projectId: number,
+  adminPassword: string,
+): Promise<void> {
+  const existing = db
+    .prepare("SELECT id FROM reviewers WHERE project_id = ? AND name = ?")
+    .get(projectId, ADMIN_REVIEWER_NAME) as { id: number } | undefined;
+  if (existing) {
+    await resetReviewerPassword(db, existing.id, adminPassword);
+    db.prepare("UPDATE reviewers SET disabled = 0 WHERE id = ?").run(existing.id);
+    return;
+  }
+  await createReviewer(db, projectId, ADMIN_REVIEWER_NAME, adminPassword);
+}
+
 export { createReviewer, resetReviewerPassword, setReviewerDisabled };

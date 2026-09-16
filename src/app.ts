@@ -33,6 +33,7 @@ import { checkoutSha, history, loadVariants, syncProject } from "./git.ts";
 import { injectBridge, mimeType, resolvePreviewFile } from "./preview.ts";
 import {
   createProject,
+  ensureAdminReviewer,
   getProjectById,
   getProjectBySlug,
   listProjects,
@@ -125,6 +126,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
         sshKeyPath: body.sshKeyPath ?? config.sshKeyPath ?? null,
         variants: body.variants,
       });
+      await ensureAdminReviewer(db, project.id, config.adminPassword);
       return c.json({ project }, 201);
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : "failed" }, 400);

@@ -30,6 +30,9 @@ button, input, select, textarea {
   color: #fff;
   cursor: pointer;
 }
+.toolbar button.active {
+  background: #e11d48;
+}
 .error { color: #9b1c1c; font-size: 13px; }
 .shell {
   display: grid;
@@ -69,6 +72,10 @@ button, input, select, textarea {
   border: 1px solid #eee4d6;
   padding: 10px;
   margin-bottom: 10px;
+  cursor: pointer;
+}
+.thread.focused {
+  outline: 2px solid #e11d48;
 }
 .thread small { color: #6b6458; }
 .admin { padding: 24px; max-width: 880px; }

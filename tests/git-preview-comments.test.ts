@@ -78,6 +78,16 @@ test("injectBridge inserts before body close", () => {
   expect(html).toContain('<script src="/p/shop/bridge.js"></script></body>');
 });
 
+test("bridge draws pin highlight and live rect overlay", () => {
+  const src = fs.readFileSync(new URL("../src/bridge.js", import.meta.url), "utf8");
+  expect(src).toContain("dr-highlight");
+  expect(src).toContain("dr-rect");
+  expect(src).toContain("coverElement");
+  expect(src).toContain("dr-mode-comment");
+  expect(src).toContain("focus-anchor");
+  expect(src).toContain("focusAnchor");
+});
+
 test("open comments persist across SHAs; resolve hides them from default list", async () => {
   const db = openDb(path.join(fs.mkdtempSync(path.join(os.tmpdir(), "dr-c-")), "app.db"));
   const project = createProject(db, {
