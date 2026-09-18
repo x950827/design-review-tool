@@ -1,4 +1,5 @@
 import { AdminApp } from "./AdminApp";
+import { AppChrome } from "./AppChrome";
 import { ReviewApp } from "./ReviewApp";
 
 export function App() {
@@ -7,9 +8,11 @@ export function App() {
   const match = path.match(/^\/p\/([^/]+)/);
   if (match) return <ReviewApp slug={match[1]!} />;
   return (
-    <div className="gate">
-      <h1>Design Review</h1>
-      <p>Откройте /admin или клиентскую ссылку /p/&lt;slug&gt;.</p>
-    </div>
+    <AppChrome href="/admin">
+      <main className="page">
+        <h1 className="page-title">Design Review</h1>
+        <p style={{ color: "var(--muted)", margin: 0 }}>Откройте /admin или клиентскую ссылку /p/&lt;slug&gt;.</p>
+      </main>
+    </AppChrome>
   );
 }

@@ -19,6 +19,9 @@ const app = createApp(db, config);
 const webDist = path.join(path.dirname(fileURLToPath(import.meta.url)), "../web/dist");
 if (fs.existsSync(webDist)) {
   app.use("/assets/*", serveStatic({ root: webDist }));
+  app.use("/design-review-*", serveStatic({ root: webDist }));
+  app.use("/favicon-*", serveStatic({ root: webDist }));
+  app.use("/apple-touch-icon-180.png", serveStatic({ root: webDist }));
   app.get("/admin", (c) => {
     const html = fs.readFileSync(path.join(webDist, "index.html"), "utf8");
     return c.html(html);

@@ -86,6 +86,8 @@ test("bridge draws pin highlight and live rect overlay", () => {
   expect(src).toContain("dr-mode-comment");
   expect(src).toContain("focus-anchor");
   expect(src).toContain("focusAnchor");
+  expect(src).toContain("collectSpecs");
+  expect(src).toContain("viewportBox");
 });
 
 test("open comments persist across SHAs; resolve hides them from default list", async () => {
@@ -120,10 +122,20 @@ test("open comments persist across SHAs; resolve hides them from default list", 
     body: "too wide",
   });
   expect(listOpenComments(db, project.id, "a")).toHaveLength(2);
+  createComment(db, {
+    projectId: project.id,
+    reviewerId: reviewer.id,
+    variantKey: "a",
+    commitSha: "ccc3333",
+    viewport: 1440,
+    kind: "page",
+    body: "общий комментарий к странице",
+  });
+  expect(listOpenComments(db, project.id, "a")).toHaveLength(3);
   addReply(db, later.id, reviewer.id, "agreed");
   setCommentStatus(db, later.id, "resolved");
-  expect(listOpenComments(db, project.id, "a")).toHaveLength(1);
+  expect(listOpenComments(db, project.id, "a")).toHaveLength(2);
   const exported = exportProject(db, project.id);
-  expect(exported.comments).toHaveLength(2);
+  expect(exported.comments).toHaveLength(3);
   expect(exported.replies).toHaveLength(1);
 });

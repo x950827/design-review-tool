@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Design Review mark</title>
+  <desc id="desc">Four focus-frame corners surrounding a small approval check.</desc>
+  
+  
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 60V40C24 31.163 31.163 24 40 24H60" stroke="#111318" stroke-width="4.5"/>
+        <path d="M100 24H120C128.837 24 136 31.163 136 40V60" stroke="#111318" stroke-width="4.5"/>
+        <path d="M136 100V120C136 128.837 128.837 136 120 136H100" stroke="#111318" stroke-width="4.5"/>
+        <path d="M60 136H40C31.163 136 24 128.837 24 120V100" stroke="#111318" stroke-width="4.5"/>
+        <circle cx="80" cy="80" r="10" fill="#6E63FF" stroke="none" stroke-width="0"/>
+        <path d="M75.5 80L79 83.5L85.5 76.5" stroke="#F7F7FA" stroke-width="2.65"/>
+      </g>
+</svg>

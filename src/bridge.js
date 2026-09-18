@@ -36,12 +36,12 @@
           box-sizing: border-box;
         }
         #dr-highlight {
-          outline: 3px solid #e11d48;
-          box-shadow: 0 0 0 2px #fff, inset 0 0 0 9999px rgba(225, 29, 72, 0.16);
+          outline: 2px solid #1d1d1f;
+          box-shadow: 0 0 0 1px #fff;
         }
         #dr-rect {
-          outline: 3px dashed #2563eb;
-          background: rgba(37, 99, 235, 0.22);
+          outline: 2px dashed #dc2626;
+          background: rgba(220, 38, 38, 0.12);
         }
         html.dr-mode-comment, html.dr-mode-rect,
         html.dr-mode-comment *, html.dr-mode-rect * { cursor: crosshair !important; }
@@ -86,9 +86,11 @@
 
   let mode = "browse";
   let drawing = null;
+  let drafting = false;
 
   function setMode(next) {
     mode = next;
+    drafting = false;
     const { highlight, rectEl } = ensureUi();
     document.documentElement.classList.toggle("dr-mode-comment", mode === "comment");
     document.documentElement.classList.toggle("dr-mode-rect", mode === "rect");
@@ -97,6 +99,46 @@
       drawing = null;
       rectEl.style.display = "none";
     }
+  }
+
+  function toHex(color) {
+    const value = String(color || "");
+    const match = value.match(
+      /rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,/]+([\d.]+%?))?\s*\)/i,
+    );
+    if (!match) return value;
+    const alpha = match[4] == null ? 1 : match[4].endsWith("%")
+      ? Number.parseFloat(match[4]) / 100
+      : Number.parseFloat(match[4]);
+    if (alpha === 0) return "transparent";
+    return `#${[match[1], match[2], match[3]]
+      .map((part) => Number(part).toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase()}`;
+  }
+
+  function viewportBox(node) {
+    const box = node.getBoundingClientRect();
+    return { x: box.left, y: box.top, w: box.width, h: box.height };
+  }
+
+  function collectSpecs(el) {
+    const cs = window.getComputedStyle(el);
+    const box = el.getBoundingClientRect();
+    const fontFamily = (cs.fontFamily || "").split(",")[0].replace(/['"]/g, "").trim();
+    const fontSize = cs.fontSize;
+    const lineHeight = cs.lineHeight;
+    const line =
+      lineHeight === "normal" || !lineHeight
+        ? fontSize
+        : `${Math.round(Number.parseFloat(lineHeight) * 100) / 100}px`;
+    return {
+      size: `${Math.round(box.width)}×${Math.round(box.height)}`,
+      color: toHex(cs.color),
+      bg: toHex(cs.backgroundColor),
+      font: `${Number.parseFloat(fontSize)}px ${cs.fontWeight} ${fontFamily}`.trim(),
+      line,
+    };
   }
 
   function focusAnchor(payload) {
@@ -158,6 +200,7 @@
     (event) => {
       const { highlight, rectEl } = ensureUi();
       if (mode === "comment") {
+        if (drafting) return;
         const el = event.target;
         if (el instanceof Element && el.id !== "dr-highlight" && el.id !== "dr-rect") {
           coverElement(highlight, el);
@@ -183,6 +226,8 @@
       if (!(el instanceof Element) || el.id === "dr-highlight") return;
       const { highlight } = ensureUi();
       coverElement(highlight, el);
+      drafting = true;
+      highlight.style.display = "none";
       window.parent.postMessage(
         {
           source: "design-review-bridge",
@@ -190,6 +235,8 @@
           selector: cssPath(el),
           reviewId: el.getAttribute("data-review-id"),
           text: (el.textContent || "").trim().slice(0, 120),
+          box: viewportBox(el),
+          specs: collectSpecs(el),
         },
         targetOrigin,
       );
@@ -232,6 +279,7 @@
           source: "design-review-bridge",
           type: "rect",
           rect: { x: x / docW, y: y / docH, w: w / docW, h: h / docH },
+          box: viewportBox(rectEl),
         },
         targetOrigin,
       );

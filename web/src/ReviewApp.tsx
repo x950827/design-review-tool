@@ -1,34 +1,30 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-
-type Variant = { key: string; label: string; git_path: string };
-type HistoryEntry = { sha: string; subject: string; committedAt: string };
-type Comment = {
-  id: number;
-  author_name: string;
-  variant_key: string;
-  commit_sha: string;
-  viewport: number;
-  kind: string;
-  selector: string | null;
-  rect_x: number | null;
-  rect_y: number | null;
-  rect_w: number | null;
-  rect_h: number | null;
-  body: string;
-  status: string;
-};
-type Reply = { id: number; comment_id: number; author_name: string; body: string };
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { api } from "./api";
+import { IconComments, IconDock } from "./icons";
+import { LoginScreen } from "./LoginScreen";
+import { AnchorDrafts } from "./review/AnchorDrafts";
+import { CommentsPanel } from "./review/CommentsPanel";
+import { ReviewToolbar } from "./review/ReviewToolbar";
+import type { Comment, HistoryEntry, PendingAnchor, PinSpecs, Reply, ReviewMode, Variant, ViewportBox } from "./types";
+import { Field, PasswordField } from "./ui";
+import { useMediaQuery } from "./useMediaQuery";
 
 const VIEWPORTS = [390, 768, 1440];
 
-async function api(path: string, init?: RequestInit) {
-  const res = await fetch(path, {
-    ...init,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || res.statusText);
-  return data;
+function asBox(value: unknown): ViewportBox | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const box = value as ViewportBox;
+  if (![box.x, box.y, box.w, box.h].every((n) => typeof n === "number")) return undefined;
+  return box;
+}
+
+function asSpecs(value: unknown): PinSpecs | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const specs = value as PinSpecs;
+  if (![specs.size, specs.color, specs.bg, specs.font, specs.line].every((n) => typeof n === "string")) {
+    return undefined;
+  }
+  return specs;
 }
 
 export function ReviewApp({ slug }: { slug: string }) {
@@ -43,12 +39,17 @@ export function ReviewApp({ slug }: { slug: string }) {
   const [sha, setSha] = useState("");
   const [comments, setComments] = useState<Comment[]>([]);
   const [replies, setReplies] = useState<Reply[]>([]);
-  const [mode, setMode] = useState<"browse" | "comment" | "rect">("browse");
-  const [draft, setDraft] = useState("");
-  const [pending, setPending] = useState<{ kind: "element" | "rect"; selector?: string; reviewId?: string; rect?: object } | null>(null);
+  const [mode, setMode] = useState<ReviewMode>("browse");
+  const [pending, setPending] = useState<PendingAnchor | null>(null);
+  const [freeOpen, setFreeOpen] = useState(false);
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const [focusError, setFocusError] = useState("");
   const [error, setError] = useState("");
+  const [commentsOpen, setCommentsOpen] = useState(true);
+  const [dockOpen, setDockOpen] = useState(true);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const compact = useMediaQuery("(max-width: 900px)");
+  const phone = useMediaQuery("(max-width: 640px)");
 
   const iframeSrc = useMemo(() => {
     if (!sha) return "";
@@ -86,17 +87,33 @@ export function ReviewApp({ slug }: { slug: string }) {
   }, [me, variant, slug]);
 
   useEffect(() => {
+    setPending(null);
+    previewFrame()?.contentWindow?.postMessage(
+      { source: "design-review", type: "set-mode", mode },
+      "*",
+    );
+  }, [iframeSrc, viewport]);
+
+  useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (!event.data || event.data.source !== "design-review-bridge") return;
       if (event.data.type === "pin") {
+        setFreeOpen(false);
         setPending({
           kind: "element",
           selector: event.data.selector,
           reviewId: event.data.reviewId,
+          box: asBox(event.data.box),
+          specs: asSpecs(event.data.specs),
         });
       }
       if (event.data.type === "rect") {
-        setPending({ kind: "rect", rect: event.data.rect });
+        setFreeOpen(false);
+        setPending({
+          kind: "rect",
+          rect: asBox(event.data.rect),
+          box: asBox(event.data.box),
+        });
       }
       if (event.data.type === "focus-result") {
         setFocusError(event.data.ok ? "" : "Элемент не найден на этой версии");
@@ -106,17 +123,38 @@ export function ReviewApp({ slug }: { slug: string }) {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  function sendMode(next: typeof mode, frame: HTMLIFrameElement | null) {
+  useEffect(() => {
+    if (compact && commentsOpen && dockOpen) setDockOpen(false);
+  }, [compact]);
+
+  function openComments() {
+    setCommentsOpen(true);
+    if (compact) setDockOpen(false);
+  }
+
+  function closeComments() {
+    setCommentsOpen(false);
+    setFreeOpen(false);
+  }
+
+  function openDock() {
+    setDockOpen(true);
+    if (compact) setCommentsOpen(false);
+  }
+
+  function previewFrame(): HTMLIFrameElement | null {
+    return frameRef.current?.querySelector("iframe") ?? document.querySelector("iframe");
+  }
+
+  function sendMode(next: ReviewMode, frame: HTMLIFrameElement | null = previewFrame()) {
+    if (next !== mode) setPending(null);
     setMode(next);
     frame?.contentWindow?.postMessage({ source: "design-review", type: "set-mode", mode: next }, "*");
   }
 
-  function previewFrame(): HTMLIFrameElement | null {
-    return document.querySelector("iframe");
-  }
-
   function revealComment(comment: Comment) {
     if (comment.kind !== "element" && comment.kind !== "rect") return;
+    setPending(null);
     setFocusedId(comment.id);
     setFocusError("");
     setMode("browse");
@@ -159,192 +197,194 @@ export function ReviewApp({ slug }: { slug: string }) {
     }
   }
 
-  async function submitComment() {
-    if (!pending || !draft.trim() || !sha) return;
+  async function postComment(input: {
+    kind: "element" | "rect" | "page";
+    body: string;
+    selector?: string;
+    reviewId?: string;
+    rect?: ViewportBox;
+  }) {
+    if (!sha) return;
     await api(`/p/${slug}/api/comments`, {
       method: "POST",
       body: JSON.stringify({
         variantKey: variant,
         commitSha: sha,
         viewport,
-        kind: pending.kind,
-        selector: pending.selector,
-        reviewId: pending.reviewId,
-        rect: pending.rect,
-        body: draft,
+        kind: input.kind,
+        selector: input.selector,
+        reviewId: input.reviewId,
+        rect: input.rect,
+        body: input.body,
       }),
     });
-    setDraft("");
-    setPending(null);
     await loadComments();
+  }
+
+  async function submitPending(body: string) {
+    if (!pending) return;
+    await postComment({
+      kind: pending.kind,
+      body,
+      selector: pending.kind === "element" ? pending.selector : undefined,
+      reviewId: pending.kind === "element" ? pending.reviewId : undefined,
+      rect: pending.kind === "rect" ? pending.rect : undefined,
+    });
+    setPending(null);
+    openComments();
+    sendMode(mode);
+  }
+
+  async function submitFree(body: string) {
+    await postComment({ kind: "page", body });
+    setFreeOpen(false);
   }
 
   if (!me) {
     return (
-      <form className="gate" onSubmit={onLogin}>
-        <h1>{slug}</h1>
-        <label>Имя</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-        <label>Пароль</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        {error ? <p className="error">{error}</p> : null}
-        <button type="submit">Войти</button>
-      </form>
+      <LoginScreen href={`/p/${slug}`} heading={slug} error={error} onSubmit={onLogin}>
+        <Field label="Имя" htmlFor="review-name">
+          <input
+            className="input"
+            id="review-name"
+            autoComplete="username"
+            value={name}
+            onChange={(event) => setName(event.currentTarget.value)}
+          />
+        </Field>
+        <PasswordField
+          id="review-password"
+          label="Пароль"
+          value={password}
+          onChange={setPassword}
+        />
+      </LoginScreen>
     );
   }
 
-  return (
-    <div className="shell">
-      <div className="toolbar">
-        <strong>{title}</strong>
-        <select value={variant} onChange={(e) => setVariant(e.target.value)}>
-          {variants.map((item) => (
-            <option key={item.key} value={item.key}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <select value={viewport} onChange={(e) => setViewport(Number(e.target.value))}>
-          {VIEWPORTS.map((width) => (
-            <option key={width} value={width}>
-              {width}
-            </option>
-          ))}
-        </select>
-        <select value={sha} onChange={(e) => setSha(e.target.value)}>
-          {history.map((entry) => (
-            <option key={entry.sha} value={entry.sha}>
-              {entry.sha.slice(0, 7)} {entry.subject}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className={mode === "browse" ? "active" : ""}
-          onClick={() => sendMode("browse", previewFrame())}
-        >
-          Просмотр
-        </button>
-        <button
-          type="button"
-          className={mode === "comment" ? "active" : ""}
-          onClick={() => sendMode("comment", previewFrame())}
-        >
-          Пин
-        </button>
-        <button
-          type="button"
-          className={mode === "rect" ? "active" : ""}
-          onClick={() => sendMode("rect", previewFrame())}
-        >
-          Rect
-        </button>
-        <span>
-          {me} · {mode}
-        </span>
-      </div>
-      <div className="frame-wrap">
-        {iframeSrc ? (
-          <iframe
-            title="preview"
-            src={iframeSrc}
-            style={{ width: viewport }}
-            onLoad={(event) => {
-              event.currentTarget.contentWindow?.postMessage(
-                { source: "design-review", type: "set-mode", mode },
-                "*",
-              );
-            }}
-          />
-        ) : (
-          <p>Нет коммитов — админ должен нажать Sync.</p>
-        )}
-      </div>
-      <aside className="panel">
-        {pending ? (
-          <div className="thread">
-            <p>
-              Новый {pending.kind}
-              {pending.selector ? ` · ${pending.selector}` : ""}
-            </p>
-            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} />
-            <button type="button" onClick={submitComment}>
-              Сохранить
-            </button>
-          </div>
-        ) : null}
-        {focusError ? <p className="error">{focusError}</p> : null}
-        {comments.map((comment) => (
-          <article
-            className={`thread${focusedId === comment.id ? " focused" : ""}`}
-            key={comment.id}
-            onClick={(event) => {
-              const target = event.target as HTMLElement;
-              if (target.closest("form, button, input, textarea, a")) return;
-              revealComment(comment);
-            }}
-          >
-            <strong>{comment.author_name}</strong>
-            <div>{comment.body}</div>
-            <small>
-              {comment.viewport}px · {comment.commit_sha.slice(0, 7)} · {comment.kind}
-              {comment.selector ? ` · ${comment.selector}` : ""}
-            </small>
-            {replies
-              .filter((reply) => reply.comment_id === comment.id)
-              .map((reply) => (
-                <p key={reply.id}>
-                  <strong>{reply.author_name}:</strong> {reply.body}
-                </p>
-              ))}
-            <ReplyForm
-              slug={slug}
-              commentId={comment.id}
-              onDone={loadComments}
-            />
-            <button
-              type="button"
-              onClick={async () => {
-                await api(`/p/${slug}/api/comments/${comment.id}/status`, {
-                  method: "POST",
-                  body: JSON.stringify({ status: "resolved" }),
-                });
-                await loadComments();
-              }}
-            >
-              Resolve
-            </button>
-          </article>
-        ))}
-      </aside>
-    </div>
-  );
-}
+  const shellClass = [
+    "review",
+    commentsOpen ? "" : "comments-collapsed",
+    dockOpen ? "" : "dock-collapsed",
+    compact ? "shell-compact" : "",
+    phone ? "shell-phone" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-function ReplyForm({
-  slug,
-  commentId,
-  onDone,
-}: {
-  slug: string;
-  commentId: number;
-  onDone: () => Promise<void>;
-}) {
-  const [text, setText] = useState("");
+  const frameMode = mode === "comment" ? "pin" : mode === "rect" ? "rect" : "pan";
+  const frameClass = [
+    "frame-wrap",
+    `frame-w-${viewport}`,
+    commentsOpen ? "" : "wide-full",
+    "motion-in-scale",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <form
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (!text.trim()) return;
-        await api(`/p/${slug}/api/comments/${commentId}/replies`, {
-          method: "POST",
-          body: JSON.stringify({ body: text }),
-        });
-        setText("");
-        await onDone();
-      }}
-    >
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ответ" />
-    </form>
+    <div className={shellClass} aria-label={title}>
+      <div className="review-body">
+        <div className="stage">
+          {iframeSrc ? (
+            <div className={frameClass} data-mode={frameMode} ref={frameRef}>
+              <iframe
+                title="Превью"
+                src={iframeSrc}
+                onLoad={(event) => {
+                  event.currentTarget.contentWindow?.postMessage(
+                    { source: "design-review", type: "set-mode", mode },
+                    "*",
+                  );
+                }}
+              />
+              <AnchorDrafts
+                pending={pending}
+                frameRef={frameRef}
+                onSubmit={submitPending}
+                onCancelRect={() => sendMode("browse")}
+              />
+            </div>
+          ) : (
+            <div className="empty-stage motion-in-scale">
+              <h2>Нет коммитов</h2>
+              <p>Нет коммитов — админ должен нажать Sync.</p>
+            </div>
+          )}
+          <button
+            type="button"
+            className="show-comments has-tip tip-left"
+            aria-label="Показать комментарии"
+            data-tip="Показать комментарии"
+            hidden={commentsOpen}
+            onClick={openComments}
+          >
+            <IconComments />
+          </button>
+          <button
+            type="button"
+            className="icon-btn show-dock has-tip"
+            aria-label="Показать панель"
+            data-tip="Показать панель"
+            hidden={dockOpen}
+            onClick={openDock}
+          >
+            <IconDock />
+          </button>
+          {dockOpen ? (
+            <ReviewToolbar
+              me={me}
+              variants={variants}
+              variant={variant}
+              onVariant={setVariant}
+              viewports={VIEWPORTS}
+              viewport={viewport}
+              onViewport={setViewport}
+              history={history}
+              sha={sha}
+              onSha={setSha}
+              mode={mode}
+              onMode={(next) => sendMode(next)}
+              commentsOpen={commentsOpen}
+              onCommentsOpen={openComments}
+              onHideDock={() => setDockOpen(false)}
+            />
+          ) : null}
+        </div>
+        {commentsOpen ? (
+          <CommentsPanel
+            comments={comments}
+            replies={replies}
+            freeOpen={freeOpen}
+            onFreeOpen={(open) => {
+              if (open) {
+                setPending(null);
+                sendMode(mode);
+              }
+              setFreeOpen(open);
+            }}
+            focusError={focusError}
+            focusedId={focusedId}
+            onReveal={revealComment}
+            onSubmitFree={submitFree}
+            onResolve={async (id) => {
+              await api(`/p/${slug}/api/comments/${id}/status`, {
+                method: "POST",
+                body: JSON.stringify({ status: "resolved" }),
+              });
+              await loadComments();
+            }}
+            onReply={async (commentId, body) => {
+              await api(`/p/${slug}/api/comments/${commentId}/replies`, {
+                method: "POST",
+                body: JSON.stringify({ body }),
+              });
+              await loadComments();
+            }}
+            onClose={closeComments}
+          />
+        ) : null}
+      </div>
+    </div>
   );
 }
