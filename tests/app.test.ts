@@ -40,6 +40,7 @@ function setup() {
     adminPassword: "admin-secret",
     sessionSecret: "0123456789abcdef",
     dataDir,
+    cookieSecure: false,
   };
   const app = createApp(db, config);
   return { db, config, app, dataDir };
@@ -51,6 +52,13 @@ function cookie(res: Response, name: string): string {
   if (!match) throw new Error(`missing cookie ${name} in ${raw}`);
   return match.split(";", 1)[0]!;
 }
+
+test("health endpoint is public", async () => {
+  const { app } = setup();
+  const res = await app.request("/health");
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ ok: true });
+});
 
 test("reviewer cannot use admin routes; comments are shared after named login", async () => {
   const { db, app, config } = setup();
@@ -134,6 +142,14 @@ test("reviewer cannot use admin routes; comments are shared after named login", 
   const htmlText = await html.text();
   expect(htmlText).toContain("Hero");
   expect(htmlText).toContain("/p/shop/bridge.js");
+
+  const bridge = await app.request("/p/shop/bridge.js", {
+    headers: { cookie: annaCookie },
+  });
+  expect(bridge.status).toBe(200);
+  const bridgeText = await bridge.text();
+  expect(bridgeText).toContain('closest("[data-review-id], [data-od-id]")');
+  expect(bridgeText).toContain("data-od-id");
 
   const asset = await app.request(`/p/shop/files/${sha}/a/assets/pixel.png`, {
     headers: { cookie: annaCookie },
@@ -219,4 +235,78 @@ test("wrong reviewer password is 401; other project is isolated", async () => {
     body: JSON.stringify({ name: "Анна", password: "anna-pass" }),
   });
   expect(other.status).toBe(401);
+});
+
+function setCookieFlags(res: Response, name: string): string {
+  const cookies =
+    typeof res.headers.getSetCookie === "function"
+      ? res.headers.getSetCookie()
+      : (res.headers.get("set-cookie") ?? "").split(/,(?=\s*[^;]+=)/);
+  const match = cookies.find((part) => part.trim().startsWith(`${name}=`));
+  if (!match) throw new Error(`missing cookie ${name}`);
+  return match;
+}
+
+test("admin and reviewer cookies stay HttpOnly Lax and follow COOKIE_SECURE", async () => {
+  const insecure = setup();
+  const adminLogin = await insecure.app.request("/admin/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ password: "admin-secret" }),
+  });
+  const adminCookie = setCookieFlags(adminLogin, "dr_admin");
+  expect(adminCookie).toMatch(/HttpOnly/i);
+  expect(adminCookie).toMatch(/SameSite=Lax/i);
+  expect(adminCookie).toMatch(/Path=\/admin/i);
+  expect(adminCookie).not.toMatch(/Secure/i);
+
+  const project = createProject(insecure.db, {
+    slug: "shop",
+    title: "Shop",
+    gitUrl: "/tmp/x",
+    branch: "main",
+    variants: [{ key: "a", label: "A", git_path: "variant-a" }],
+  });
+  await createReviewer(insecure.db, project.id, "Анна", "anna-pass");
+  const reviewerLogin = await insecure.app.request("/p/shop/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "Анна", password: "anna-pass" }),
+  });
+  const reviewerCookie = setCookieFlags(reviewerLogin, "dr_rev_shop");
+  expect(reviewerCookie).toMatch(/HttpOnly/i);
+  expect(reviewerCookie).toMatch(/SameSite=Lax/i);
+  expect(reviewerCookie).toMatch(/Path=\/p\/shop/i);
+  expect(reviewerCookie).not.toMatch(/Secure/i);
+
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "dr-app-data-"));
+  const db = openDb(path.join(dataDir, "app.db"));
+  const app = createApp(db, {
+    host: "127.0.0.1",
+    port: 0,
+    adminPassword: "admin-secret",
+    sessionSecret: "0123456789abcdef",
+    dataDir,
+    cookieSecure: true,
+  });
+  const projectB = createProject(db, {
+    slug: "shop",
+    title: "Shop",
+    gitUrl: "/tmp/x",
+    branch: "main",
+    variants: [{ key: "a", label: "A", git_path: "variant-a" }],
+  });
+  await createReviewer(db, projectB.id, "Анна", "anna-pass");
+  const secureAdmin = await app.request("/admin/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ password: "admin-secret" }),
+  });
+  const secureReviewer = await app.request("/p/shop/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "Анна", password: "anna-pass" }),
+  });
+  expect(setCookieFlags(secureAdmin, "dr_admin")).toMatch(/Secure/i);
+  expect(setCookieFlags(secureReviewer, "dr_rev_shop")).toMatch(/Secure/i);
 });

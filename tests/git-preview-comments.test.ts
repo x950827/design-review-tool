@@ -79,7 +79,11 @@ test("injectBridge inserts before body close", () => {
 });
 
 test("bridge draws pin highlight and live rect overlay", () => {
-  const src = fs.readFileSync(new URL("../src/bridge.js", import.meta.url), "utf8");
+  const pinTarget = fs.readFileSync(new URL("../src/pin-target.js", import.meta.url), "utf8");
+  const src = [
+    pinTarget,
+    fs.readFileSync(new URL("../src/bridge.js", import.meta.url), "utf8"),
+  ].join("\n");
   expect(src).toContain("dr-highlight");
   expect(src).toContain("dr-rect");
   expect(src).toContain("coverElement");
@@ -88,6 +92,8 @@ test("bridge draws pin highlight and live rect overlay", () => {
   expect(src).toContain("focusAnchor");
   expect(src).toContain("collectSpecs");
   expect(src).toContain("viewportBox");
+  expect(src).toContain("resolvePinTarget");
+  expect(src).toContain("[data-review-id], [data-od-id]");
 });
 
 test("open comments persist across SHAs; resolve hides them from default list", async () => {

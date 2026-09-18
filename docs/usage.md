@@ -15,9 +15,9 @@ npm run build:web
 npm run dev
 ```
 
-Открыть `http://127.0.0.1:8787/admin`. На VDS: `HOST=0.0.0.0`, ключ к приватному репо в `GIT_SSH_KEY`. Без HTTPS пароль идёт открытым текстом.
+Открыть `http://127.0.0.1:8787/admin`. На VDS: см. [docs/deploy.md](deploy.md) (`HOST=0.0.0.0` внутри контейнера, compose публикует только `127.0.0.1:8787`, `COOKIE_SECURE=true`). Ключ к приватному репо не кладут в image: `compose.ssh.yaml` монтирует `./secrets/git_ssh` в `/run/secrets/git_ssh` (`GIT_SSH_KEY=/run/secrets/git_ssh`). Без HTTPS пароль идёт открытым текстом.
 
-После правок в `web/` снова `npm run build:web`. `bridge.js` читается при старте процесса — после его изменения сервер нужно перезапустить.
+После правок в `web/` снова `npm run build:web`. `bridge.js` / `pin-target.js` читаются при старте процесса — после их изменения сервер нужно перезапустить.
 
 ## Людям
 
@@ -79,8 +79,8 @@ GET /admin/api/projects/:id/export.json
 
 - `body`, `author_name`, `status` (`open` / `resolved`)
 - `kind`: `element` | `rect` | `page`
-- `selector` — CSS-путь или `[data-review-id="…"]`, если в макете проставлен атрибут
-- `review_id` — значение `data-review-id`, если было
+- `selector` — CSS-путь, `[data-review-id="…"]` или `[data-od-id="…"]` (OpenDesign)
+- `review_id` — значение `data-review-id`, иначе `data-od-id`, если стабильный якорь был
 - `rect_x/y/w/h` — доли от размера **документа** (0–1), не пиксели вьюпорта
 - `viewport` — 390, 768 или 1440: смотреть баг на этой ширине
 - `variant_key` — какая папка (`a` / `b`)
@@ -90,7 +90,7 @@ GET /admin/api/projects/:id/export.json
 
 ### Как чинить по kind
 
-**element.** Найти узел по `selector`. Если селектор хрупкий (`nth-of-type`, длинная цепочка), лучше повесить стабильный `data-review-id` в макете и больше не ломать его. Спеки в UI (шрифт, цвет, размер) — подсказка с момента клика, в экспорт они не пишутся.
+**element.** Найти узел по `selector`. Если селектор хрупкий (`nth-of-type`, длинная цепочка), повесьте стабильный `data-od-id` (OpenDesign) или `data-review-id` в макете и больше не ломайте его. Клик по вложенной цене, рейтингу или кнопке привязывается к ближайшей карточке с якорем, не к `nth-of-type`. Спеки в UI (шрифт, цвет, размер) — подсказка с момента клика, в экспорт они не пишутся.
 
 **rect.** Это область кадра, не элемент. Смотреть тот `viewport` и тот вариант; править то, что попало в рамку. Координаты нормализованы к scrollWidth/scrollHeight.
 
@@ -108,10 +108,10 @@ GET /admin/api/projects/:id/export.json
 
 - Chrome: `web/src/` (логин, админка, док, панель, оверлеи). Стили — `web/src/styles.css`.
 - Пин-карточка и полоска выделения живут в `web/src/review/AnchorDrafts.tsx`, порталятся в `document.body`, чтобы их не резал `overflow` iframe.
-- Клики по макету — `src/bridge.js` (`postMessage`: `pin` / `rect` / `focus-anchor` / `set-mode`).
+- Клики по макету — `src/bridge.js` + `src/pin-target.js` (`postMessage`: `pin` / `rect` / `focus-anchor` / `set-mode`). Якорь: `closest("[data-review-id], [data-od-id]")`, в `reviewId` уходит найденный id.
 - API и git: `src/app.ts`, `src/comments.ts`, `src/git.ts`. Kind `page` уже есть, не выдумывать новый.
 - Не возвращать композер пина/rect в правую панель.
-- Не менять auth, cookie path, SQLite-схему и sandbox-поведение превью без явной задачи.
+- Не менять auth, cookie path, SQLite-схему и sandbox-поведение превью без явной задачи. `COOKIE_SECURE` уже есть: локально `false`, в production `true`.
 - Копирайт интерфейса — русский, кроме технических ярлыков вроде Resolve и SHA.
 
 Подробный продуктовый спек: `docs/superpowers/specs/2026-09-15-design-review-portal-design.md`. Где UI разошёлся со спеком (оверлеи вместо композера в панели) — верить текущему коду и этой инструкции.

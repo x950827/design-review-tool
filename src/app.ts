@@ -41,14 +41,26 @@ import {
 } from "./projects.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const bridgeSource = fs.readFileSync(path.join(here, "bridge.js"), "utf8");
 
-function cookieOpts(pathValue: string) {
+function loadBridgeSource(): string {
+  const pinTarget = fs.readFileSync(path.join(here, "pin-target.js"), "utf8").replace(/^export /gm, "");
+  const bridge = fs.readFileSync(path.join(here, "bridge.js"), "utf8");
+  const marker = "(() => {";
+  const index = bridge.indexOf(marker);
+  if (index !== 0) {
+    throw new Error("bridge.js must start with an IIFE so pin-target.js can be inlined");
+  }
+  return `${marker}\n${pinTarget}\n${bridge.slice(marker.length)}`;
+}
+
+const bridgeSource = loadBridgeSource();
+
+function cookieOpts(pathValue: string, secure: boolean) {
   return {
     path: pathValue,
     httpOnly: true,
     sameSite: "Lax" as const,
-    secure: false,
+    secure,
   };
 }
 
@@ -81,14 +93,14 @@ export function createApp(db: Database.Database, config: Config): Hono {
     const session = await loginAdmin(body.password ?? "", config.adminPassword);
     if (!session) return c.json({ error: "invalid credentials" }, 401);
     setCookie(c, ADMIN_COOKIE, signSession(session, config.sessionSecret), {
-      ...cookieOpts("/admin"),
+      ...cookieOpts("/admin", config.cookieSecure),
       maxAge: 14 * 24 * 60 * 60,
     });
     return c.json({ ok: true });
   });
 
   app.post("/admin/api/logout", (c) => {
-    deleteCookie(c, ADMIN_COOKIE, { path: "/admin" });
+    deleteCookie(c, ADMIN_COOKIE, cookieOpts("/admin", config.cookieSecure));
     return c.json({ ok: true });
   });
 
@@ -202,7 +214,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
     const session = await loginReviewer(db, slug, body.name ?? "", body.password ?? "");
     if (!session) return c.json({ error: "invalid credentials" }, 401);
     setCookie(c, reviewerCookieName(slug), signSession(session, config.sessionSecret), {
-      ...cookieOpts(`/p/${slug}`),
+      ...cookieOpts(`/p/${slug}`, config.cookieSecure),
       maxAge: 14 * 24 * 60 * 60,
     });
     return c.json({ ok: true, name: session.name });
@@ -210,7 +222,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
 
   app.post("/p/:slug/api/logout", (c) => {
     const slug = c.req.param("slug");
-    deleteCookie(c, reviewerCookieName(slug), { path: `/p/${slug}` });
+    deleteCookie(c, reviewerCookieName(slug), cookieOpts(`/p/${slug}`, config.cookieSecure));
     return c.json({ ok: true });
   });
 

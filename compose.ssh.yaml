@@ -1,0 +1,21 @@
+# Overlay for a private git remote. Not used by default (`docker compose up`).
+# The key stays on the host; the image never COPY it.
+#
+#   mkdir -p secrets
+#   cp "$DEPLOY_KEY" secrets/git_ssh
+#   chown 1000:1000 secrets/git_ssh
+#   chmod 400 secrets/git_ssh
+#   docker compose -f compose.yaml -f compose.ssh.yaml up -d
+#
+# OpenSSH rejects world-readable keys, so this is a bind mount (mode 400),
+# not a Docker secret (those are typically 0444).
+
+services:
+  design-review:
+    environment:
+      GIT_SSH_KEY: /run/secrets/git_ssh
+    volumes:
+      - type: bind
+        source: ./secrets/git_ssh
+        target: /run/secrets/git_ssh
+        read_only: true

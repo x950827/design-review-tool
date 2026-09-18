@@ -2,28 +2,6 @@
   const parentOrigin = document.referrer ? new URL(document.referrer).origin : "*";
   const targetOrigin = parentOrigin === "null" ? "*" : parentOrigin;
 
-  function cssPath(el) {
-    if (el.dataset && el.dataset.reviewId) return `[data-review-id="${el.dataset.reviewId}"]`;
-    if (el.id) return `#${CSS.escape(el.id)}`;
-    const parts = [];
-    let node = el;
-    while (node && node.nodeType === 1 && parts.length < 6) {
-      let sel = node.nodeName.toLowerCase();
-      if (node.className && typeof node.className === "string") {
-        const cls = node.className.trim().split(/\s+/)[0];
-        if (cls) sel += `.${CSS.escape(cls)}`;
-      }
-      const parent = node.parentElement;
-      if (parent) {
-        const siblings = [...parent.children].filter((c) => c.nodeName === node.nodeName);
-        if (siblings.length > 1) sel += `:nth-of-type(${siblings.indexOf(node) + 1})`;
-      }
-      parts.unshift(sel);
-      node = parent;
-    }
-    return parts.join(" > ");
-  }
-
   function ensureUi() {
     if (!document.getElementById("dr-style")) {
       const style = document.createElement("style");
@@ -224,19 +202,20 @@
       event.stopPropagation();
       const el = event.target;
       if (!(el instanceof Element) || el.id === "dr-highlight") return;
+      const pin = resolvePinTarget(el);
       const { highlight } = ensureUi();
-      coverElement(highlight, el);
+      coverElement(highlight, pin.node);
       drafting = true;
       highlight.style.display = "none";
       window.parent.postMessage(
         {
           source: "design-review-bridge",
           type: "pin",
-          selector: cssPath(el),
-          reviewId: el.getAttribute("data-review-id"),
-          text: (el.textContent || "").trim().slice(0, 120),
-          box: viewportBox(el),
-          specs: collectSpecs(el),
+          selector: pin.selector,
+          reviewId: pin.reviewId,
+          text: (pin.node.textContent || "").trim().slice(0, 120),
+          box: viewportBox(pin.node),
+          specs: collectSpecs(pin.node),
         },
         targetOrigin,
       );

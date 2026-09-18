@@ -16,3 +16,5 @@ coverage/
 .turbo/
 *.log
 tmp/
+.vitest/
+secrets/

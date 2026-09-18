@@ -17,9 +17,9 @@ ADMIN_PASSWORD=... SESSION_SECRET=... npm run dev
 
 Open `http://127.0.0.1:8787/admin`. Create a project (private git URL + variant folder paths), add reviewer name+password, press **Sync git**. Client URL: `/p/<slug>`.
 
-On a VDS bind `HOST=0.0.0.0` and one port. Put a read-only deploy key in `GIT_SSH_KEY`. HTTP without a domain sends the password in the clear.
+Local cookies are not `Secure` (`COOKIE_SECURE=false`). Production recipe: [docs/deploy.md](docs/deploy.md) (`HOST=0.0.0.0` inside the container, compose publishes `127.0.0.1:8787` only, `COOKIE_SECURE=true`, persistent `DATA_DIR`, HTTPS reverse proxy). Do not bake passwords or an SSH deploy key into the image; private git uses `compose.ssh.yaml` (`./secrets/git_ssh` → `/run/secrets/git_ssh`).
 
-After `web/` changes run `npm run build:web` again. Restart the process if you edited `src/bridge.js`.
+After `web/` changes run `npm run build:web` again. Restart the process if you edited `src/bridge.js` or `src/pin-target.js`.
 
 ## Spec / plan
 
