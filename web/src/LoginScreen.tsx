@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode } from "react";
 import { AppChrome } from "./AppChrome";
+import { useI18n } from "./i18n";
 import { FormError } from "./ui";
 
 export function LoginScreen({
@@ -15,6 +16,7 @@ export function LoginScreen({
   onSubmit: (event: FormEvent) => void;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <AppChrome href={href}>
       <main className="page-narrow">
@@ -32,7 +34,7 @@ export function LoginScreen({
           {children}
           <FormError message={error} />
           <button type="submit" className="btn btn-primary btn-block">
-            Войти
+            {t("signIn")}
           </button>
         </form>
       </main>

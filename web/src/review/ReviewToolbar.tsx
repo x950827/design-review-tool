@@ -6,12 +6,14 @@ import {
   IconPhone,
   IconRect,
 } from "../icons";
+import { LangSwitch, useI18n } from "../i18n";
+import type { MessageKey } from "../messages";
 import type { HistoryEntry, ReviewMode, Variant } from "../types";
 
-const VIEWPORT_META: Record<number, { label: string; tip: string; icon: "phone" | "tablet" | "desktop" }> = {
-  390: { label: "Мобильный 390", tip: "Мобильный · 390", icon: "phone" },
-  768: { label: "Планшет 768", tip: "Планшет · 768", icon: "tablet" },
-  1440: { label: "Десктоп 1440", tip: "Десктоп · 1440", icon: "desktop" },
+const VIEWPORT_META: Record<number, { label: MessageKey; tip: MessageKey; icon: "phone" | "tablet" | "desktop" }> = {
+  390: { label: "viewport390", tip: "viewport390Tip", icon: "phone" },
+  768: { label: "viewport768", tip: "viewport768Tip", icon: "tablet" },
+  1440: { label: "viewport1440", tip: "viewport1440Tip", icon: "desktop" },
 };
 
 export function ReviewToolbar({
@@ -47,14 +49,15 @@ export function ReviewToolbar({
   onCommentsOpen: (open: boolean) => void;
   onHideDock: () => void;
 }) {
+  const { t } = useI18n();
   const initial = me.trim().charAt(0).toUpperCase() || "?";
   return (
-    <div className="dock motion-dock" role="toolbar" aria-label="Параметры ревью">
+    <div className="dock motion-dock" role="toolbar" aria-label={t("reviewToolbar")}>
       <button
         type="button"
         className="dock-hide has-tip"
-        aria-label="Скрыть панель"
-        data-tip="Скрыть панель"
+        aria-label={t("hideDock")}
+        data-tip={t("hideDock")}
         onClick={onHideDock}
       >
         <IconChevronDown />
@@ -70,7 +73,7 @@ export function ReviewToolbar({
             <img src="/design-review-mark.svg" alt="" width={24} height={24} />
           </a>
           {variants.length ? (
-            <div className="seg" role="group" aria-label="Вариант">
+            <div className="seg variant-seg" role="group" aria-label={t("variant")}>
               {variants.map((item) => (
                 <button
                   key={item.key}
@@ -83,11 +86,11 @@ export function ReviewToolbar({
               ))}
             </div>
           ) : null}
-          <div className="seg icon-widths" role="group" aria-label="Ширина">
+          <div className="seg icon-widths" role="group" aria-label={t("width")}>
             {viewports.map((width) => {
               const meta = VIEWPORT_META[width] ?? {
-                label: String(width),
-                tip: String(width),
+                label: "viewport1440" as const,
+                tip: "viewport1440Tip" as const,
                 icon: "desktop" as const,
               };
               return (
@@ -97,8 +100,8 @@ export function ReviewToolbar({
                   className="has-tip"
                   data-width={width}
                   aria-pressed={width === viewport}
-                  aria-label={meta.label}
-                  data-tip={meta.tip}
+                  aria-label={t(meta.label)}
+                  data-tip={t(meta.tip)}
                   onClick={() => onViewport(width)}
                 >
                   {meta.icon === "desktop" ? (
@@ -112,7 +115,7 @@ export function ReviewToolbar({
           </div>
           <select
             className="select num"
-            aria-label="Коммит"
+            aria-label={t("commit")}
             value={sha}
             onChange={(event) => onSha(event.currentTarget.value)}
           >
@@ -123,13 +126,13 @@ export function ReviewToolbar({
             ))}
           </select>
           <span className="dock-divider" aria-hidden="true" />
-          <div className="icon-seg" role="group" aria-label="Режим">
+          <div className="icon-seg" role="group" aria-label={t("mode")}>
             <button
               type="button"
               className="has-tip"
               aria-pressed={mode === "browse"}
-              aria-label="Просмотр"
-              data-tip="Просмотр"
+              aria-label={t("browse")}
+              data-tip={t("browse")}
               onClick={() => onMode("browse")}
             >
               <IconBrowse />
@@ -138,8 +141,8 @@ export function ReviewToolbar({
               type="button"
               className="has-tip"
               aria-pressed={mode === "comment"}
-              aria-label="Элемент"
-              data-tip="Элемент"
+              aria-label={t("element")}
+              data-tip={t("element")}
               onClick={() => onMode("comment")}
             >
               <IconComments />
@@ -148,13 +151,14 @@ export function ReviewToolbar({
               type="button"
               className="has-tip"
               aria-pressed={mode === "rect"}
-              aria-label="Выделить"
-              data-tip="Выделить"
+              aria-label={t("rect")}
+              data-tip={t("rect")}
               onClick={() => onMode("rect")}
             >
               <IconRect />
             </button>
           </div>
+          <LangSwitch />
           <span className="user-badge">
             <span className="avatar">{initial}</span>
             {me}
@@ -162,8 +166,8 @@ export function ReviewToolbar({
           <button
             type="button"
             className="icon-btn has-tip dock-comments"
-            aria-label="Комментарии"
-            data-tip="Комментарии"
+            aria-label={t("comments")}
+            data-tip={t("comments")}
             aria-pressed={commentsOpen}
             onClick={() => onCommentsOpen(true)}
           >

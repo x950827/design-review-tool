@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { LangSwitch } from "./i18n";
 
 export function AppChrome({
   href,
@@ -22,6 +23,7 @@ export function AppChrome({
           />
           {subtitle ? <span className="brand-sub">{subtitle}</span> : null}
         </a>
+        {href === "/admin" ? <LangSwitch /> : null}
       </header>
       {children}
     </>

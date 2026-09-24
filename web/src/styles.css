@@ -1053,6 +1053,8 @@ html:has(.review) body {
 
 
 .review.shell-phone .dock .lang-seg { display: none; }
+.comments-head .lang-seg { display: none; }
+.review.shell-phone .comments-head .lang-seg { display: inline-flex; }
 .review.shell-phone .dock-divider { display: none; }
 .review.shell-phone .dock .select,
 .review.shell-phone .dock [data-od-id="commit-select"] {
@@ -1069,7 +1071,7 @@ html:has(.review) body {
   border-radius: var(--radius-sm);
 }
 
-.review.shell-phone .dock .seg[aria-label="Вариант"] button {
+.review.shell-phone .dock .variant-seg button {
   padding: 0 10px;
 }
 
