@@ -35,6 +35,7 @@ export function assertGitRemote(value: string): void {
     value.startsWith("https://") ||
     value.startsWith("ssh://") ||
     value.startsWith("git@") ||
+    value.startsWith("file://") ||
     value.startsWith("/");
   if (!allowed) throw new Error("invalid git url");
 }

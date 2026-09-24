@@ -82,6 +82,8 @@ test("git remotes reject option injection", () => {
   expect(() => assertGitRemote("ext::sh -c id")).toThrow(/invalid git url/);
   assertGitRemote("https://github.com/example/design-review-tool.git");
   assertGitRemote("/tmp/repo");
+  assertGitRemote("file:///review-repos/example.git");
+  expect(() => assertGitRemote("file://-upload-pack=touch")).toThrow(/invalid git url/);
 });
 
 test("injectBridge inserts before body close", () => {
