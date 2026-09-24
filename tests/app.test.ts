@@ -170,7 +170,7 @@ test("reviewer cannot use admin routes; comments are shared after named login", 
   expect(dump.comments).toHaveLength(1);
 });
 
-test("creating a project via admin API also creates Админ with the admin password", async () => {
+test("creating a project via admin API also creates admin with the admin password", async () => {
   const { app } = setup();
   const adminLogin = await app.request("/admin/api/login", {
     method: "POST",
@@ -197,14 +197,14 @@ test("creating a project via admin API also creates Админ with the admin pa
   const payload = (await listed.json()) as {
     projects: { reviewers: { name: string }[] }[];
   };
-  expect(payload.projects[0]?.reviewers.map((r) => r.name)).toContain("Админ");
+  expect(payload.projects[0]?.reviewers.map((r) => r.name)).toContain("admin");
   const login = await app.request("/p/shop/api/login", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: "Админ", password: "admin-secret" }),
+    body: JSON.stringify({ name: "admin", password: "admin-secret" }),
   });
   expect(login.status).toBe(200);
-  expect(((await login.json()) as { name: string }).name).toBe("Админ");
+  expect(((await login.json()) as { name: string }).name).toBe("admin");
 });
 
 test("wrong reviewer password is 401; other project is isolated", async () => {

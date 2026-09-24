@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { renameLegacyAdminReviewers } from "./projects.ts";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS projects (
@@ -67,5 +68,6 @@ export function openDb(dbPath: string): Database.Database {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
+  renameLegacyAdminReviewers(db);
   return db;
 }
