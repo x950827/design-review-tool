@@ -1,5 +1,6 @@
 import { CSSProperties, RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "../i18n";
 import { IconClose, IconGrip, IconRectBox, IconSend } from "../icons";
 import type { PendingAnchor, PinSpecs, ViewportBox } from "../types";
 
@@ -121,6 +122,7 @@ function PinPopover({
   origin: Origin;
   onSubmit: (body: string) => void;
 }) {
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [size, setSize] = useState({ w: 300, h: 280 });
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -151,22 +153,22 @@ function PinPopover({
       className="pin-popover"
       data-open="true"
       role="dialog"
-      aria-label="Комментарий к элементу"
+      aria-label={t("elementComment")}
       style={{ left: pos.left, top: pos.top }}
     >
       <div className="pin-popover-head">
         <span className="pin-popover-drag" aria-hidden="true">
           <IconGrip />
         </span>
-        <p className="pin-popover-sel">{pending.selector || "элемент"}</p>
+        <p className="pin-popover-sel">{pending.selector || t("elementFallback")}</p>
       </div>
       <PinSpecsList specs={pending.specs} />
       <div className="pin-popover-divider" aria-hidden="true" />
       <textarea
         ref={inputRef}
         className="textarea"
-        placeholder="Комментарий к элементу…"
-        aria-label="Комментарий к элементу"
+        placeholder={t("elementPlaceholder")}
+        aria-label={t("elementComment")}
         value={text}
         onChange={(event) => setText(event.currentTarget.value)}
       />
@@ -180,7 +182,7 @@ function PinPopover({
             onSubmit(text.trim());
           }}
         >
-          Комментарий
+          {t("comment")}
         </button>
       </div>
     </div>,
@@ -199,6 +201,7 @@ function RectNoteBar({
   onSubmit: (body: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [size, setSize] = useState({ w: 360, h: 44 });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -228,11 +231,11 @@ function RectNoteBar({
       className="rect-note-bar"
       data-open="true"
       role="group"
-      aria-label="Заметка к выделению"
+      aria-label={t("rectNote")}
       style={placeNoteBar(box, origin, size)}
     >
-      <div className="icon-seg" role="group" aria-label="Тип метки">
-        <button type="button" className="has-tip" aria-pressed="true" aria-label="Прямоугольник" data-tip="Прямоугольник">
+      <div className="icon-seg" role="group" aria-label={t("markType")}>
+        <button type="button" className="has-tip" aria-pressed="true" aria-label={t("rectangle")} data-tip={t("rectangle")}>
           <IconRectBox />
         </button>
       </div>
@@ -240,8 +243,8 @@ function RectNoteBar({
         ref={inputRef}
         className="rect-note-input"
         type="text"
-        placeholder="Заметка к выделению…"
-        aria-label="Заметка к выделению"
+        placeholder={t("rectPlaceholder")}
+        aria-label={t("rectNote")}
         value={text}
         onChange={(event) => setText(event.currentTarget.value)}
         onKeyDown={(event) => {
@@ -251,8 +254,8 @@ function RectNoteBar({
       <button
         type="button"
         className="icon-btn send has-tip"
-        aria-label="Отправить"
-        data-tip="Отправить"
+        aria-label={t("send")}
+        data-tip={t("send")}
         disabled={!canSend}
         onClick={() => {
           if (!canSend) return;
@@ -264,8 +267,8 @@ function RectNoteBar({
       <button
         type="button"
         className="icon-btn has-tip"
-        aria-label="Закрыть"
-        data-tip="Закрыть"
+        aria-label={t("close")}
+        data-tip={t("close")}
         onClick={onClose}
       >
         <IconClose />
@@ -286,6 +289,7 @@ export function AnchorDrafts({
   onSubmit: (body: string) => void;
   onCancelRect: () => void;
 }) {
+  const { t } = useI18n();
   const origin = useFrameOrigin(frameRef, Boolean(pending));
   if (!pending) return null;
   const box = pending.box;
@@ -295,7 +299,7 @@ export function AnchorDrafts({
         <span
           className="pin-marker active"
           style={{ left: box.x + box.w / 2, top: box.y + box.h / 2 }}
-          title="Элемент"
+          title={t("element")}
         />
       ) : null}
       {pending.kind === "rect" && box ? (

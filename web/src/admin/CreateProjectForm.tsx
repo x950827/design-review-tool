@@ -1,14 +1,17 @@
 import { FormEvent, useState } from "react";
 import { api } from "../api";
+import { useI18n } from "../i18n";
+import { translateError } from "../messages";
 import { Field, FormError } from "../ui";
 
 export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void> }) {
-  const [title, setTitle] = useState("Пример каталога");
-  const [slug, setSlug] = useState("catalog");
-  const [gitUrl, setGitUrl] = useState("https://github.com/x950827/design-review-tool.git");
-  const [branch, setBranch] = useState("main");
-  const [pathA, setPathA] = useState("examples/catalog/a");
-  const [pathB, setPathB] = useState("examples/catalog/b");
+  const { t } = useI18n();
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [gitUrl, setGitUrl] = useState("");
+  const [branch, setBranch] = useState("");
+  const [pathA, setPathA] = useState("");
+  const [pathB, setPathB] = useState("");
   const [error, setError] = useState("");
 
   async function onSubmit(event: FormEvent) {
@@ -23,22 +26,22 @@ export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void
           gitUrl,
           branch,
           variants: [
-            { key: "a", label: "Вариант A", git_path: pathA },
-            { key: "b", label: "Вариант B", git_path: pathB },
+            { key: "a", label: t("variantLabelA"), git_path: pathA },
+            { key: "b", label: t("variantLabelB"), git_path: pathB },
           ],
         }),
       });
       await onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ошибка");
+      setError(err instanceof Error ? translateError(err.message, t) : t("errGeneric"));
     }
   }
 
   return (
     <section className="card-flat motion-in-scale motion-d2">
-      <h2 className="section-h2">Новый проект</h2>
+      <h2 className="section-h2">{t("newProject")}</h2>
       <form onSubmit={onSubmit}>
-        <Field label="Название" htmlFor="project-title">
+        <Field label={t("fieldTitle")} htmlFor="project-title">
           <input
             className="input"
             id="project-title"
@@ -46,7 +49,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void
             onChange={(event) => setTitle(event.currentTarget.value)}
           />
         </Field>
-        <Field label="Slug" htmlFor="project-slug">
+        <Field label={t("fieldSlug")} htmlFor="project-slug">
           <input
             className="input num"
             id="project-slug"
@@ -54,7 +57,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void
             onChange={(event) => setSlug(event.currentTarget.value)}
           />
         </Field>
-        <Field label="Git URL" htmlFor="project-git">
+        <Field label={t("fieldGitUrl")} htmlFor="project-git">
           <input
             className="input num"
             id="project-git"
@@ -62,15 +65,16 @@ export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void
             onChange={(event) => setGitUrl(event.currentTarget.value)}
           />
         </Field>
-        <Field label="Ветка" htmlFor="project-branch">
+        <Field label={t("fieldBranch")} htmlFor="project-branch">
           <input
             className="input num"
             id="project-branch"
+            placeholder={t("placeholderBranch")}
             value={branch}
             onChange={(event) => setBranch(event.currentTarget.value)}
           />
         </Field>
-        <Field label="Путь варианта A" htmlFor="project-path-a">
+        <Field label={t("fieldPathA")} htmlFor="project-path-a">
           <input
             className="input num"
             id="project-path-a"
@@ -78,7 +82,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void
             onChange={(event) => setPathA(event.currentTarget.value)}
           />
         </Field>
-        <Field label="Путь варианта B" htmlFor="project-path-b">
+        <Field label={t("fieldPathB")} htmlFor="project-path-b">
           <input
             className="input num"
             id="project-path-b"
@@ -88,7 +92,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void
         </Field>
         <FormError message={error} />
         <button type="submit" className="btn btn-primary">
-          Создать
+          {t("createProject")}
         </button>
       </form>
     </section>

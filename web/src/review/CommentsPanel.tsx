@@ -1,11 +1,13 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { LangSwitch, useI18n } from "../i18n";
 import { IconHideComments, IconPlus } from "../icons";
+import type { MessageKey } from "../messages";
 import type { Comment, Reply } from "../types";
 
-const KIND_LABEL: Record<string, string> = {
-  element: "элемент",
-  rect: "выделить",
-  page: "страница",
+const KIND_KEY: Record<string, MessageKey> = {
+  element: "kindElement",
+  rect: "kindRect",
+  page: "kindPage",
 };
 
 export function CommentsPanel({
@@ -33,6 +35,7 @@ export function CommentsPanel({
   onReply: (commentId: number, body: string) => Promise<void>;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [freeDraft, setFreeDraft] = useState("");
   const freeRef = useRef<HTMLTextAreaElement>(null);
 
@@ -44,15 +47,16 @@ export function CommentsPanel({
   }, [freeOpen]);
 
   return (
-    <aside className="comments motion-panel" aria-label="Комментарии">
+    <aside className="comments motion-panel" aria-label={t("comments")}>
       <div className="comments-head">
-        <h2>Комментарии</h2>
+        <h2>{t("comments")}</h2>
         <div className="comments-head-actions">
+          <LangSwitch />
           <button
             type="button"
             className="icon-btn has-tip tip-left"
-            aria-label="Новый комментарий"
-            data-tip="Новый комментарий"
+            aria-label={t("newComment")}
+            data-tip={t("newComment")}
             aria-pressed={freeOpen}
             onClick={() => onFreeOpen(!freeOpen)}
           >
@@ -61,8 +65,8 @@ export function CommentsPanel({
           <button
             type="button"
             className="icon-btn has-tip tip-left"
-            aria-label="Скрыть комментарии"
-            data-tip="Скрыть комментарии"
+            aria-label={t("hideComments")}
+            data-tip={t("hideComments")}
             onClick={onClose}
           >
             <IconHideComments />
@@ -72,14 +76,14 @@ export function CommentsPanel({
       <div className="comments-body">
         {freeOpen ? (
           <div className="composer motion-in">
-            <p className="composer-title">Новый комментарий</p>
-            <p className="composer-hint">Без привязки к элементу или выделению</p>
+            <p className="composer-title">{t("newComment")}</p>
+            <p className="composer-hint">{t("pageCommentHint")}</p>
             <div className="field" style={{ marginBottom: 10 }}>
               <textarea
                 ref={freeRef}
                 className="textarea"
-                placeholder="Комментарий"
-                aria-label="Комментарий"
+                placeholder={t("comment")}
+                aria-label={t("comment")}
                 value={freeDraft}
                 onChange={(event) => setFreeDraft(event.currentTarget.value)}
               />
@@ -94,7 +98,7 @@ export function CommentsPanel({
                 setFreeDraft("");
               }}
             >
-              Сохранить
+              {t("save")}
             </button>
           </div>
         ) : null}
@@ -104,7 +108,7 @@ export function CommentsPanel({
           </div>
         ) : null}
         {comments.length === 0 && !freeOpen ? (
-          <div className="comments-empty">Нет открытых комментариев</div>
+          <div className="comments-empty">{t("noOpenComments")}</div>
         ) : null}
         {comments.map((comment, index) => (
           <article
@@ -127,7 +131,7 @@ export function CommentsPanel({
             <div className="thread-meta">
               <span className="num">{comment.viewport}px</span>
               <span className="num">{comment.commit_sha.slice(0, 7)}</span>
-              <span>{KIND_LABEL[comment.kind] ?? comment.kind}</span>
+              <span>{KIND_KEY[comment.kind] ? t(KIND_KEY[comment.kind]) : comment.kind}</span>
               {comment.selector ? <span className="num">{comment.selector}</span> : null}
             </div>
             {replies.some((reply) => reply.comment_id === comment.id) ? (
@@ -141,7 +145,7 @@ export function CommentsPanel({
                   ))}
               </div>
             ) : null}
-            <ReplyForm commentId={comment.id} onReply={onReply} />
+            <ReplyForm commentId={comment.id} onReply={onReply} replyLabel={t("reply")} replyVerb={t("replyVerb")} />
             <button
               type="button"
               className="btn btn-ghost btn-sm"
@@ -159,9 +163,13 @@ export function CommentsPanel({
 function ReplyForm({
   commentId,
   onReply,
+  replyLabel,
+  replyVerb,
 }: {
   commentId: number;
   onReply: (commentId: number, body: string) => Promise<void>;
+  replyLabel: string;
+  replyVerb: string;
 }) {
   const [text, setText] = useState("");
   async function submit(event: FormEvent) {
@@ -174,13 +182,13 @@ function ReplyForm({
     <form className="reply-row" onSubmit={submit}>
       <input
         className="input"
-        placeholder="Ответ"
-        aria-label="Ответ"
+        placeholder={replyLabel}
+        aria-label={replyLabel}
         value={text}
         onChange={(event) => setText(event.currentTarget.value)}
       />
       <button type="submit" className="btn btn-secondary btn-sm">
-        Ответ
+        {replyVerb}
       </button>
     </form>
   );

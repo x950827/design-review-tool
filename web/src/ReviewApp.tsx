@@ -6,6 +6,8 @@ import { AnchorDrafts } from "./review/AnchorDrafts";
 import { CommentsPanel } from "./review/CommentsPanel";
 import { ReviewToolbar } from "./review/ReviewToolbar";
 import type { Comment, HistoryEntry, PendingAnchor, PinSpecs, Reply, ReviewMode, Variant, ViewportBox } from "./types";
+import { useI18n } from "./i18n";
+import { translateError } from "./messages";
 import { Field, PasswordField } from "./ui";
 import { useMediaQuery } from "./useMediaQuery";
 
@@ -28,6 +30,7 @@ function asSpecs(value: unknown): PinSpecs | undefined {
 }
 
 export function ReviewApp({ slug }: { slug: string }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [me, setMe] = useState("");
@@ -117,12 +120,12 @@ export function ReviewApp({ slug }: { slug: string }) {
         });
       }
       if (event.data.type === "focus-result") {
-        setFocusError(event.data.ok ? "" : "Элемент не найден на этой версии");
+        setFocusError(event.data.ok ? "" : t("anchorMissing"));
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (compact && commentsOpen && dockOpen) setDockOpen(false);
@@ -200,7 +203,7 @@ export function ReviewApp({ slug }: { slug: string }) {
       });
       await loadSession();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ошибка");
+      setError(err instanceof Error ? translateError(err.message, t) : t("errGeneric"));
     }
   }
 
@@ -250,7 +253,7 @@ export function ReviewApp({ slug }: { slug: string }) {
   if (!me) {
     return (
       <LoginScreen href={`/p/${slug}`} heading={slug} error={error} onSubmit={onLogin}>
-        <Field label="Имя" htmlFor="review-name">
+        <Field label={t("name")} htmlFor="review-name">
           <input
             className="input"
             id="review-name"
@@ -261,7 +264,7 @@ export function ReviewApp({ slug }: { slug: string }) {
         </Field>
         <PasswordField
           id="review-password"
-          label="Пароль"
+          label={t("password")}
           value={password}
           onChange={setPassword}
         />
@@ -296,7 +299,7 @@ export function ReviewApp({ slug }: { slug: string }) {
           {iframeSrc ? (
             <div className={frameClass} data-mode={frameMode} ref={frameRef}>
               <iframe
-                title="Превью"
+                title={t("previewTitle")}
                 src={iframeSrc}
                 onLoad={(event) => {
                   event.currentTarget.contentWindow?.postMessage(
@@ -314,15 +317,15 @@ export function ReviewApp({ slug }: { slug: string }) {
             </div>
           ) : (
             <div className="empty-stage motion-in-scale">
-              <h2>Нет коммитов</h2>
-              <p>Нет коммитов — админ должен нажать Sync.</p>
+              <h2>{t("noCommitsTitle")}</h2>
+              <p>{t("noCommitsBody")}</p>
             </div>
           )}
           <button
             type="button"
             className="show-comments has-tip tip-left"
-            aria-label="Показать комментарии"
-            data-tip="Показать комментарии"
+            aria-label={t("showComments")}
+            data-tip={t("showComments")}
             hidden={commentsOpen}
             onClick={openComments}
           >
@@ -331,8 +334,8 @@ export function ReviewApp({ slug }: { slug: string }) {
           <button
             type="button"
             className="icon-btn show-dock has-tip"
-            aria-label="Показать панель"
-            data-tip="Показать панель"
+            aria-label={t("showDock")}
+            data-tip={t("showDock")}
             hidden={dockOpen}
             onClick={openDock}
           >

@@ -1,4 +1,5 @@
 import { ChangeEvent, ReactNode, useEffect, useId, useRef, useState } from "react";
+import { useI18n } from "./i18n";
 
 export function FormError({ message }: { message: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -51,6 +52,7 @@ export function PasswordField({
 }) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   return (
     <Field label={label} htmlFor={inputId}>
@@ -72,7 +74,7 @@ export function PasswordField({
           className="password-toggle"
           onClick={() => setVisible((open) => !open)}
         >
-          {visible ? "Скрыть" : "Показать"}
+          {visible ? t("hide") : t("show")}
         </button>
       </div>
     </Field>

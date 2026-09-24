@@ -54,6 +54,13 @@ function assertViewport(n: number): asserts n is Viewport {
   }
 }
 
+export function countOpenComments(db: Database.Database, projectId: number): number {
+  const row = db
+    .prepare("SELECT COUNT(*) AS n FROM comments WHERE project_id = ? AND status = 'open'")
+    .get(projectId) as { n: number };
+  return row.n;
+}
+
 export function createComment(db: Database.Database, input: CommentInput): CommentRow {
   const body = input.body.trim();
   if (!body) throw new Error("body required");

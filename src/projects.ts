@@ -72,7 +72,19 @@ export function listReviewers(db: Database.Database, projectId: number) {
     .all(projectId) as { id: number; name: string; disabled: number; created_at: string }[];
 }
 
-export const ADMIN_REVIEWER_NAME = "Админ";
+export const ADMIN_REVIEWER_NAME = "admin";
+
+export function renameLegacyAdminReviewers(db: Database.Database): void {
+  db.prepare(
+    `UPDATE reviewers
+     SET name = 'admin'
+     WHERE name = 'Админ'
+       AND NOT EXISTS (
+         SELECT 1 FROM reviewers taken
+         WHERE taken.project_id = reviewers.project_id AND taken.name = 'admin'
+       )`,
+  ).run();
+}
 
 export async function ensureAdminReviewer(
   db: Database.Database,
