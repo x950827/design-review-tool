@@ -30,7 +30,16 @@ ADMIN_PASSWORD=... SESSION_SECRET=... npm run dev
 
 ## Продакшен
 
-[docs/deploy.md](docs/deploy.md). В контейнере процесс слушает `0.0.0.0`, Compose публикует только `127.0.0.1:8787`. TLS завершает обратный прокси, `COOKIE_SECURE=true`, `TRUST_PROXY=true`, SQLite и git-checkout лежат в `DATA_DIR`. Пароли и SSH-ключ в образ не кладут. Приватный git — через `compose.ssh.yaml` (`./secrets/git_ssh` → `/run/secrets/git_ssh`).
+Образ уже собран. Клонировать репозиторий и собирать его на сервере не нужно:
+
+```bash
+curl -fsSL -o compose.yaml \
+  https://raw.githubusercontent.com/x950827/design-review-tool/main/compose.yaml
+printf '%s\n' 'ADMIN_PASSWORD=choose-a-password' 'SESSION_SECRET=at-least-16-chars' > .env
+docker compose up -d
+```
+
+TLS, приватный git и остальные детали: [docs/deploy.md](docs/deploy.md). Compose публикует только `127.0.0.1:8787`. Пароли и SSH-ключ в образ не кладут.
 
 ## Участие
 

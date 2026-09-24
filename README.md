@@ -30,7 +30,16 @@ Day-to-day review flow, in Russian: [docs/usage.md](docs/usage.md). Agents worki
 
 ## Production
 
-[docs/deploy.md](docs/deploy.md). The container listens on `0.0.0.0`; Compose publishes `127.0.0.1:8787` only. Put TLS on a reverse proxy, set `COOKIE_SECURE=true` and `TRUST_PROXY=true`, and keep SQLite plus git checkouts in `DATA_DIR`. Do not bake passwords or an SSH key into the image. Private git uses `compose.ssh.yaml` (`./secrets/git_ssh` mounted at `/run/secrets/git_ssh`).
+Pull the image. No clone, no build:
+
+```bash
+curl -fsSL -o compose.yaml \
+  https://raw.githubusercontent.com/x950827/design-review-tool/main/compose.yaml
+printf '%s\n' 'ADMIN_PASSWORD=choose-a-password' 'SESSION_SECRET=at-least-16-chars' > .env
+docker compose up -d
+```
+
+Details, TLS, and a private git key: [docs/deploy.md](docs/deploy.md). Compose publishes `127.0.0.1:8787` only. The container listens on `0.0.0.0` inside the network. Do not bake passwords or an SSH key into the image.
 
 ## Contributing
 

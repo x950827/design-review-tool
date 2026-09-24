@@ -1,0 +1,8 @@
+# Build the image from this checkout instead of pulling GHCR.
+#   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+
+services:
+  design-review:
+    build: .
+    image: ghcr.io/x950827/design-review-tool:local
+    pull_policy: build

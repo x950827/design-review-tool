@@ -2,20 +2,26 @@
 
 One Node process, SQLite + git checkouts on a persistent volume, HTTPS at a reverse proxy.
 
-## Build and run
+## Run the published image
+
+No clone and no local build. On the server:
 
 ```bash
-cp .env.example .env
-# set ADMIN_PASSWORD and SESSION_SECRET (16+ chars); do not commit .env
-
-export ADMIN_PASSWORD='...'
-export SESSION_SECRET='...'   # 16+ characters
-
-docker compose build
+curl -fsSL -o compose.yaml \
+  https://raw.githubusercontent.com/x950827/design-review-tool/main/compose.yaml
+printf '%s\n' 'ADMIN_PASSWORD=choose-a-password' 'SESSION_SECRET=at-least-16-chars' > .env
 docker compose up -d
 ```
 
-Compose interpolates `ADMIN_PASSWORD` and `SESSION_SECRET` from the environment or a local `.env` next to `compose.yaml`. The process refuses to start if they are missing. Do not put real passwords in git.
+The image is `ghcr.io/x950827/design-review-tool:latest`, built from `main` by GitHub Actions. Compose reads `ADMIN_PASSWORD` and `SESSION_SECRET` from `.env`. The process refuses to start if they are missing. Do not commit `.env`.
+
+`COOKIE_SECURE` in this file is `true`. Behind HTTPS that is what you want. For a trial on plain `http://127.0.0.1:8787`, set `COOKIE_SECURE=false` in `.env` or the browser drops the session cookie.
+
+To build from a checkout instead of GHCR:
+
+```bash
+docker compose -f compose.yaml -f compose.build.yaml up -d --build
+```
 
 The image runs `npm start` with `HOST=0.0.0.0`, `DATA_DIR=/app/data`, `COOKIE_SECURE=true`. SQLite (`app.db`) and git clones/checkouts live in the `design-review-data` volume. Do not copy `.env`, passwords, or an SSH key into the image (`.dockerignore` already drops `secrets/`, `*.key`, `id_rsa`, `id_ed25519`, `.env`).
 
