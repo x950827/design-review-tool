@@ -43,7 +43,7 @@ Press **Sync git**, then open `/p/<slug>`. Cards carry `data-od-id`, so a click 
 1. Create a project: title, slug, git URL, branch, and the variant folder paths inside the repo. Each folder needs an `index.html`.
 2. Press **Sync git**. Commit history for those paths is fetched.
 3. Add named reviewer accounts (name + password). There is no public signup.
-4. Send the client `/p/<slug>`. The **Админ** account is created automatically and uses the admin password.
+4. Send the client `/p/<slug>`. The **admin** account is created automatically and uses the admin password.
 
 **Export JSON** on the project card is every thread, reply, selector, rect, SHA, and viewport. That file is the input for an agent.
 
@@ -90,7 +90,7 @@ From the instance, with an admin session:
 GET /admin/api/projects/:id/export.json
 ```
 
-Or the **Экспорт JSON** button in `/admin`. The body is `{ comments, replies }`. Fields an agent needs:
+Or the **Export JSON** button in `/admin`. The body is `{ comments, replies }`. Fields an agent needs:
 
 - `body`, `author_name`, `status` (`open` / `resolved`)
 - `kind`: `element` | `rect` | `page`

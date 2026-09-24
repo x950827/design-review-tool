@@ -6,7 +6,7 @@ Read [docs/usage.md](docs/usage.md) before changing this repo or applying review
 
 ## Applying review comments
 
-Feedback lives on the running instance, not in this git tree. Download `GET /admin/api/projects/:id/export.json` (or the admin **Экспорт JSON** button). Work through `status: "open"` threads.
+Feedback lives on the running instance, not in this git tree. Download `GET /admin/api/projects/:id/export.json` (or the admin **Export JSON** button). Work through `status: "open"` threads.
 
 | `kind` | Meaning |
 | --- | --- |
@@ -22,4 +22,4 @@ Fix the **design git** (variant folders), not `web/`. Then the human hits **Sync
 - Pin popover and rect note bar: `web/src/review/AnchorDrafts.tsx`, portaled to `document.body` so the iframe clip does not crop them. Do not move that composer back into the comments panel.
 - Do not rewrite preview HTML as React. Do not invent comment kinds. `page` already exists.
 - Do not change auth, cookie paths, SQLite schema, or preview serving unless the task is explicitly that.
-- UI copy is Russian except existing technical labels (Resolve, SHA, Sync git).
+- Chrome copy is English by default and Russian through the EN | RU switch. Technical labels stay Resolve, SHA, and Sync git.
