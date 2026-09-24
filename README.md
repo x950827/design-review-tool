@@ -4,6 +4,8 @@
 
 Self-hosted review for HTML that lives in git. An admin connects a repository, reviewers open a named login, and comments stick to an element, a highlight, or the page. React is only the frame around the preview. The design stays HTML in an iframe.
 
+![Review window: preview, element pin, and open comments](docs/screenshot.png)
+
 ## Features
 
 - Named reviewer accounts. No public signup.
@@ -26,7 +28,9 @@ ADMIN_PASSWORD=... SESSION_SECRET=... npm run dev
 
 Local cookies are not `Secure` (`COOKIE_SECURE=false`). After `web/` changes, run `npm run build:web` again. Restart the process after editing `src/bridge.js` or `src/pin-target.js`.
 
-Day-to-day review flow, in Russian: [docs/usage.md](docs/usage.md). Agents working in this repository: [AGENTS.md](AGENTS.md).
+How to review, and how an agent applies comments: [docs/usage.en.md](docs/usage.en.md). Russian: [docs/usage.md](docs/usage.md). Agents working in this repository: [AGENTS.md](AGENTS.md).
+
+The sample shop is in this repo. Point a project at `https://github.com/x950827/design-review-tool.git`, branch `main`, folders `examples/catalog/a` and `examples/catalog/b`, then press **Sync git**.
 
 ## Production
 

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Field Notes — A</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f6f1e8; color: #1c1915; font: 17px/1.45 Georgia, "Iowan Old Style", serif; }
+    header, main, footer { max-width: 880px; margin: 0 auto; padding: 28px 24px; }
+    header { display: flex; justify-content: space-between; align-items: baseline; }
+    .mark { font-weight: 700; letter-spacing: -0.03em; }
+    nav a { color: inherit; margin-left: 16px; }
+    .hero { padding-top: 12px; }
+    h1 { margin: 0 0 8px; font-size: 56px; line-height: 0.95; letter-spacing: -0.04em; }
+    .lede { max-width: 36em; color: #4a433a; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    article { background: #fffdf8; border-radius: 16px; overflow: hidden; }
+    .swatch { height: 160px; }
+    .pad { padding: 16px 18px 20px; }
+    h2 { margin: 0 0 4px; font-size: 22px; }
+    .price { font-variant-numeric: tabular-nums; }
+    button { margin-top: 12px; border: 0; border-radius: 999px; padding: 8px 14px; background: #1c1915; color: #f6f1e8; font: inherit; }
+    footer { color: #6d645a; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header data-od-id="site-header">
+    <div class="mark">Field Notes</div>
+    <nav><a href="#notebooks">Notebooks</a><a href="#about">About</a></nav>
+  </header>
+  <main>
+    <section class="hero" data-od-id="hero">
+      <h1>Paper that stays open.</h1>
+      <p class="lede">Two notebooks, one shop. This variant keeps a large title and a quiet page.</p>
+    </section>
+    <section class="grid" id="notebooks">
+      <article data-od-id="product-field">
+        <div class="swatch" style="background:#c45c26"></div>
+        <div class="pad">
+          <h2>Field</h2>
+          <p class="price">$18</p>
+          <button type="button">Add</button>
+        </div>
+      </article>
+      <article data-od-id="product-ledger">
+        <div class="swatch" style="background:#2f5d50"></div>
+        <div class="pad">
+          <h2>Ledger</h2>
+          <p class="price">$24</p>
+          <button type="button">Add</button>
+        </div>
+      </article>
+    </section>
+  </main>
+  <footer data-od-id="site-footer">Variant A · light editorial</footer>
+</body>
+</html>

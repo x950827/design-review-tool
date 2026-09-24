@@ -3,12 +3,12 @@ import { api } from "../api";
 import { Field, FormError } from "../ui";
 
 export function CreateProjectForm({ onCreated }: { onCreated: () => Promise<void> }) {
-  const [title, setTitle] = useState("Цветочный каталог");
-  const [slug, setSlug] = useState("flower-shop");
-  const [gitUrl, setGitUrl] = useState("");
+  const [title, setTitle] = useState("Пример каталога");
+  const [slug, setSlug] = useState("catalog");
+  const [gitUrl, setGitUrl] = useState("https://github.com/x950827/design-review-tool.git");
   const [branch, setBranch] = useState("main");
-  const [pathA, setPathA] = useState("docs/design/home-catalog/variant-a");
-  const [pathB, setPathB] = useState("docs/design/home-catalog/variant-b");
+  const [pathA, setPathA] = useState("examples/catalog/a");
+  const [pathB, setPathB] = useState("examples/catalog/b");
   const [error, setError] = useState("");
 
   async function onSubmit(event: FormEvent) {

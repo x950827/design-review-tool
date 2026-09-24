@@ -4,7 +4,9 @@
 
 Свой сервер для ревью HTML из git. Админ подключает репозиторий, ревьюер входит по имени, комментарии крепятся к элементу, выделению или странице. React — только рамка. Макет остаётся HTML в iframe.
 
-Подробный сценарий для людей и агентов: [docs/usage.md](docs/usage.md).
+Подробный сценарий для людей и агентов: [docs/usage.md](docs/usage.md). English: [docs/usage.en.md](docs/usage.en.md).
+
+Пример магазина лежит в этом репозитории. В проекте укажите `https://github.com/x950827/design-review-tool.git`, ветку `main`, папки `examples/catalog/a` и `examples/catalog/b`, затем **Sync git**.
 
 ## Возможности
 

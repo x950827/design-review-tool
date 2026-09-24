@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Field Notes — B</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #101418; color: #f4f1ea; font: 16px/1.4 "Avenir Next", "Segoe UI", sans-serif; }
+    header, main, footer { max-width: 880px; margin: 0 auto; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; }
+    .mark { font-weight: 700; letter-spacing: -0.03em; }
+    nav a { color: #f4f1ea; margin-left: 14px; text-decoration: none; }
+    h1 { margin: 8px 0 18px; font-size: 32px; letter-spacing: -0.04em; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    article { display: grid; grid-template-columns: 88px 1fr; gap: 12px; align-items: center; background: #1b2228; border-radius: 12px; padding: 12px; }
+    .swatch { height: 72px; border-radius: 8px; }
+    h2 { margin: 0; font-size: 18px; }
+    .price { margin: 4px 0 0; color: #c8c2b8; font-variant-numeric: tabular-nums; }
+    button { border: 0; border-radius: 8px; padding: 8px 12px; background: #f4f1ea; color: #101418; font: inherit; }
+    footer { color: #9a948a; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header data-od-id="site-header">
+    <div class="mark">Field Notes</div>
+    <nav><a href="#notebooks">Notebooks</a><a href="#about">About</a></nav>
+  </header>
+  <main>
+    <h1 data-od-id="hero">The dense shelf.</h1>
+    <section class="grid" id="notebooks">
+      <article data-od-id="product-field">
+        <div class="swatch" style="background:#c45c26"></div>
+        <div>
+          <h2>Field</h2>
+          <p class="price">$18</p>
+          <button type="button">Add</button>
+        </div>
+      </article>
+      <article data-od-id="product-ledger">
+        <div class="swatch" style="background:#2f5d50"></div>
+        <div>
+          <h2>Ledger</h2>
+          <p class="price">$24</p>
+          <button type="button">Add</button>
+        </div>
+      </article>
+      <article data-od-id="product-index">
+        <div class="swatch" style="background:#d6a21e"></div>
+        <div>
+          <h2>Index</h2>
+          <p class="price">$16</p>
+          <button type="button">Add</button>
+        </div>
+      </article>
+      <article data-od-id="product-carbon">
+        <div class="swatch" style="background:#8a8f98"></div>
+        <div>
+          <h2>Carbon</h2>
+          <p class="price">$22</p>
+          <button type="button">Add</button>
+        </div>
+      </article>
+    </section>
+  </main>
+  <footer data-od-id="site-footer">Variant B · compact list</footer>
+</body>
+</html>
