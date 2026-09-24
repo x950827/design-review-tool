@@ -25,6 +25,7 @@ export type Project = {
   branch: string;
   variants: Variant[];
   reviewers: Reviewer[];
+  open_count: number;
 };
 export type ReviewMode = "browse" | "comment" | "rect";
 export type ViewportBox = { x: number; y: number; w: number; h: number };

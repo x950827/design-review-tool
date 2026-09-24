@@ -22,6 +22,7 @@ import {
 } from "./auth.ts";
 import {
   addReply,
+  countOpenComments,
   createComment,
   exportProject,
   getComment,
@@ -151,6 +152,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
       ...p,
       variants: loadVariants(db, p.id),
       reviewers: listReviewers(db, p.id),
+      open_count: countOpenComments(db, p.id),
     }));
     return c.json({ projects });
   });
@@ -209,7 +211,8 @@ export function createApp(db: Database.Database, config: Config): Hono {
     if (!project) return c.json({ error: "not found" }, 404);
     const reviewerId = Number(c.req.param("rid"));
     if (!reviewerInProject(project.id, reviewerId)) return c.json({ error: "not found" }, 404);
-    setReviewerDisabled(db, reviewerId, true);
+    const body = await c.req.json<{ disabled?: boolean }>().catch(() => ({}) as { disabled?: boolean });
+    setReviewerDisabled(db, reviewerId, body.disabled !== false);
     return c.json({ ok: true });
   });
 

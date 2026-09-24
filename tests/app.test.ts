@@ -335,3 +335,64 @@ test("opening a project clears the admin session cookie", async () => {
   expect(cleared).toMatch(/Path=\/admin/i);
   expect(cleared).toMatch(/Max-Age=0|Expires=/i);
 });
+
+test("project list includes open_count and disable can enable again", async () => {
+  const { db, app } = setup();
+  const adminLogin = await app.request("/admin/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ password: "admin-secret" }),
+  });
+  const adminCookie = cookie(adminLogin, "dr_admin");
+  const created = await app.request("/admin/api/projects", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({
+      slug: "shop",
+      title: "Shop",
+      gitUrl: "/tmp/x",
+      branch: "main",
+      variants: [{ key: "a", label: "A", git_path: "variant-a" }],
+    }),
+  });
+  const projectId = ((await created.json()) as { project: { id: number } }).project.id;
+  const added = await app.request(`/admin/api/projects/${projectId}/reviewers`, {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({ name: "Anna", password: "anna-pass" }),
+  });
+  const reviewerId = ((await added.json()) as { reviewer: { id: number } }).reviewer.id;
+  const { createComment } = await import("../src/comments.ts");
+  createComment(db, {
+    projectId,
+    reviewerId,
+    variantKey: "a",
+    commitSha: "abc1234",
+    viewport: 1440,
+    kind: "page",
+    body: "open note",
+  });
+  const listed = await app.request("/admin/api/projects", { headers: { cookie: adminCookie } });
+  const projects = ((await listed.json()) as { projects: { open_count: number }[] }).projects;
+  expect(projects[0]?.open_count).toBe(1);
+
+  const disabled = await app.request(
+    `/admin/api/projects/${projectId}/reviewers/${reviewerId}/disable`,
+    { method: "POST", headers: { cookie: adminCookie } },
+  );
+  expect(disabled.status).toBe(200);
+  const enabled = await app.request(
+    `/admin/api/projects/${projectId}/reviewers/${reviewerId}/disable`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: adminCookie },
+      body: JSON.stringify({ disabled: false }),
+    },
+  );
+  expect(enabled.status).toBe(200);
+  const again = await app.request("/admin/api/projects", { headers: { cookie: adminCookie } });
+  const reviewers = (
+    (await again.json()) as { projects: { reviewers: { name: string; disabled: number }[] }[] }
+  ).projects[0]?.reviewers;
+  expect(reviewers?.find((r) => r.name === "Anna")?.disabled).toBe(0);
+});
