@@ -1,24 +1,39 @@
 
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/inter-latin-600-normal.woff2") format("woff2");
+}
 
 :root {
   --bg: #ffffff;
-  --surface: #f5f5f7;
-  --surface-warm: #fbfbfd;
-  --fg: #1d1d1f;
+  --surface: #F1F2F5;
+  --surface-warm: #F7F7FA;
+  --fg: #111318;
   --fg-2: #424245;
   --muted: #6e6e73;
   --meta: #86868b;
   --border: #d2d2d7;
   --border-soft: #e8e8ed;
-  --accent: #0071e3;
+  --accent: #6E63FF;
   --accent-on: #ffffff;
-  --accent-hover: #0077ed;
-  --accent-active: #0066cc;
+  --accent-on-dark: #8C85FF;
+  --accent-hover: #5b51e6;
+  --accent-active: #4f46d6;
   --success: #16a34a;
   --warn: #eab308;
   --danger: #dc2626;
-  --font-display: "SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-body: "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
   --text-xs: 12px;
   --text-sm: 14px;

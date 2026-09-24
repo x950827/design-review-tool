@@ -19,6 +19,7 @@ const app = createApp(db, config);
 const webDist = path.join(path.dirname(fileURLToPath(import.meta.url)), "../web/dist");
 if (fs.existsSync(webDist)) {
   app.use("/assets/*", serveStatic({ root: webDist }));
+  app.use("/fonts/*", serveStatic({ root: webDist }));
   app.use("/design-review-*", serveStatic({ root: webDist }));
   app.use("/favicon-*", serveStatic({ root: webDist }));
   app.use("/apple-touch-icon-180.png", serveStatic({ root: webDist }));
