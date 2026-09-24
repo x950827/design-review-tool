@@ -21,7 +21,8 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=8787 \
     DATA_DIR=/app/data \
-    COOKIE_SECURE=true
+    COOKIE_SECURE=true \
+    TRUST_PROXY=true
 COPY package.json package-lock.json ./
 # Runtime secret only: never COPY an SSH key or .env. See compose.ssh.yaml.
 COPY --from=builder /app/node_modules ./node_modules

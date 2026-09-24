@@ -1,6 +1,24 @@
 (() => {
-  const parentOrigin = document.referrer ? new URL(document.referrer).origin : "*";
-  const targetOrigin = parentOrigin === "null" ? "*" : parentOrigin;
+  function parentOrigin() {
+    try {
+      return window.parent.location.origin;
+    } catch {
+      if (!document.referrer) return "";
+      try {
+        const origin = new URL(document.referrer).origin;
+        return origin === "null" ? "" : origin;
+      } catch {
+        return "";
+      }
+    }
+  }
+
+  const targetOrigin = parentOrigin();
+
+  function postToParent(message) {
+    if (!targetOrigin) return;
+    window.parent.postMessage(message, targetOrigin);
+  }
 
   function ensureUi() {
     if (!document.getElementById("dr-style")) {
@@ -131,7 +149,7 @@
       rectEl.style.display = "none";
       if (!el) {
         highlight.style.display = "none";
-        window.parent.postMessage(
+        if (targetOrigin) postToParent(
           { source: "design-review-bridge", type: "focus-result", ok: false },
           targetOrigin,
         );
@@ -139,7 +157,7 @@
       }
       el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
       coverElement(highlight, el);
-      window.parent.postMessage(
+      postToParent(
         { source: "design-review-bridge", type: "focus-result", ok: true },
         targetOrigin,
       );
@@ -155,19 +173,20 @@
       const h = payload.rect.h * docH;
       place(rectEl, x, y, w, h);
       window.scrollTo({ top: Math.max(0, y - 72), left: Math.max(0, x - 24), behavior: "smooth" });
-      window.parent.postMessage(
+      postToParent(
         { source: "design-review-bridge", type: "focus-result", ok: true },
         targetOrigin,
       );
       return;
     }
-    window.parent.postMessage(
+    postToParent(
       { source: "design-review-bridge", type: "focus-result", ok: false },
       targetOrigin,
     );
   }
 
   window.addEventListener("message", (event) => {
+    if (!targetOrigin || event.origin !== targetOrigin) return;
     if (!event.data || event.data.source !== "design-review") return;
     if (event.data.type === "set-mode") setMode(event.data.mode);
     if (event.data.type === "focus-anchor") focusAnchor(event.data);
@@ -207,7 +226,7 @@
       coverElement(highlight, pin.node);
       drafting = true;
       highlight.style.display = "none";
-      window.parent.postMessage(
+      postToParent(
         {
           source: "design-review-bridge",
           type: "pin",
@@ -253,7 +272,7 @@
       place(rectEl, x, y, w, h);
       const docW = Math.max(document.documentElement.scrollWidth, 1);
       const docH = Math.max(document.documentElement.scrollHeight, 1);
-      window.parent.postMessage(
+      postToParent(
         {
           source: "design-review-bridge",
           type: "rect",

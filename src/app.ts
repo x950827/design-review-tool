@@ -15,6 +15,7 @@ import {
   readSession,
   resetReviewerPassword,
   reviewerCookieName,
+  reviewerIsActive,
   setReviewerDisabled,
   signSession,
   type ReviewerSession,
@@ -69,24 +70,59 @@ function adminOk(c: Context, config: Config): boolean {
   return session?.kind === "admin";
 }
 
-function reviewerOk(c: Context, config: Config, slug: string): ReviewerSession | null {
+function reviewerOk(
+  c: Context,
+  db: Database.Database,
+  config: Config,
+  slug: string,
+): ReviewerSession | null {
   const session = readSession(getCookie(c, reviewerCookieName(slug)), config.sessionSecret);
   if (!session || session.kind !== "reviewer" || session.slug !== slug) return null;
+  if (!reviewerIsActive(db, session.reviewerId, session.projectId)) return null;
   return session;
 }
 
-function clientKey(c: Context, extra: string): string {
-  return `${c.req.header("x-forwarded-for") ?? "ip"}:${extra}`;
+function clientAddress(c: Context): string {
+  const incoming = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
+    ?.incoming;
+  return incoming?.socket?.remoteAddress || "local";
+}
+
+function clientKey(c: Context, extra: string, trustProxy: boolean): string {
+  if (trustProxy) {
+    const forwarded = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+    if (forwarded) return `${forwarded}:${extra}`;
+  }
+  return `${clientAddress(c)}:${extra}`;
+}
+
+function publicError(err: unknown, fallback: string): string {
+  const msg = err instanceof Error ? err.message : "";
+  if (msg && msg.length < 180 && !/[\r\n/\\]/.test(msg)) return msg;
+  console.error(fallback, msg);
+  return fallback;
 }
 
 export function createApp(db: Database.Database, config: Config): Hono {
   const app = new Hono();
   const limiter = new LoginLimiter();
 
+  app.use("*", async (c, next) => {
+    await next();
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header("Referrer-Policy", "same-origin");
+    c.header("X-Frame-Options", "SAMEORIGIN");
+    // Preview HTML is same-origin and can fetch /admin. Drop the admin
+    // session on every project response, before that HTML runs.
+    if (c.req.path.startsWith("/p/")) {
+      deleteCookie(c, ADMIN_COOKIE, cookieOpts("/admin", config.cookieSecure));
+    }
+  });
+
   app.get("/health", (c) => c.json({ ok: true }));
 
   app.post("/admin/api/login", async (c) => {
-    if (!limiter.allow(clientKey(c, "admin"))) {
+    if (!limiter.allow(clientKey(c, "admin", config.trustProxy))) {
       return c.json({ error: "too many attempts" }, 429);
     }
     const body = await c.req.json<{ password?: string }>().catch(() => ({}));
@@ -141,7 +177,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
       await ensureAdminReviewer(db, project.id, config.adminPassword);
       return c.json({ project }, 201);
     } catch (err) {
-      return c.json({ error: err instanceof Error ? err.message : "failed" }, 400);
+      return c.json({ error: publicError(err, "failed") }, 400);
     }
   });
 
@@ -149,26 +185,47 @@ export function createApp(db: Database.Database, config: Config): Hono {
     if (!adminOk(c, config)) return c.json({ error: "unauthorized" }, 401);
     const project = getProjectById(db, Number(c.req.param("id")));
     if (!project) return c.json({ error: "not found" }, 404);
-    const body = await c.req.json<{ name: string; password: string }>();
+    const body = await c.req.json<{ name: string; password: string }>().catch(() => null);
+    if (!body?.name || !body.password) return c.json({ error: "name and password required" }, 400);
     try {
       const reviewer = await createReviewer(db, project.id, body.name, body.password);
       return c.json({ reviewer }, 201);
     } catch (err) {
-      return c.json({ error: err instanceof Error ? err.message : "failed" }, 400);
+      return c.json({ error: publicError(err, "failed") }, 400);
     }
   });
 
+  function reviewerInProject(projectId: number, reviewerId: number): boolean {
+    return reviewerIsActive(db, reviewerId, projectId) || Boolean(
+      db
+        .prepare("SELECT id FROM reviewers WHERE id = ? AND project_id = ?")
+        .get(reviewerId, projectId),
+    );
+  }
+
   app.post("/admin/api/projects/:id/reviewers/:rid/disable", async (c) => {
     if (!adminOk(c, config)) return c.json({ error: "unauthorized" }, 401);
-    setReviewerDisabled(db, Number(c.req.param("rid")), true);
+    const project = getProjectById(db, Number(c.req.param("id")));
+    if (!project) return c.json({ error: "not found" }, 404);
+    const reviewerId = Number(c.req.param("rid"));
+    if (!reviewerInProject(project.id, reviewerId)) return c.json({ error: "not found" }, 404);
+    setReviewerDisabled(db, reviewerId, true);
     return c.json({ ok: true });
   });
 
   app.post("/admin/api/projects/:id/reviewers/:rid/reset", async (c) => {
     if (!adminOk(c, config)) return c.json({ error: "unauthorized" }, 401);
-    const body = await c.req.json<{ password: string }>();
-    await resetReviewerPassword(db, Number(c.req.param("rid")), body.password);
-    return c.json({ ok: true });
+    const project = getProjectById(db, Number(c.req.param("id")));
+    if (!project) return c.json({ error: "not found" }, 404);
+    const reviewerId = Number(c.req.param("rid"));
+    if (!reviewerInProject(project.id, reviewerId)) return c.json({ error: "not found" }, 404);
+    const body = await c.req.json<{ password?: string }>().catch(() => ({}));
+    try {
+      await resetReviewerPassword(db, reviewerId, body.password ?? "");
+      return c.json({ ok: true });
+    } catch (err) {
+      return c.json({ error: publicError(err, "failed") }, 400);
+    }
   });
 
   app.post("/admin/api/projects/:id/sync", async (c) => {
@@ -194,7 +251,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
       );
       return c.json({ ok: true, history: entries });
     } catch (err) {
-      return c.json({ error: err instanceof Error ? err.message : "sync failed" }, 400);
+      return c.json({ error: publicError(err, "sync failed") }, 400);
     }
   });
 
@@ -207,7 +264,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
 
   app.post("/p/:slug/api/login", async (c) => {
     const slug = c.req.param("slug");
-    if (!limiter.allow(clientKey(c, slug))) {
+    if (!limiter.allow(clientKey(c, slug, config.trustProxy))) {
       return c.json({ error: "too many attempts" }, 429);
     }
     const body = await c.req.json<{ name?: string; password?: string }>().catch(() => ({}));
@@ -228,7 +285,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
 
   app.get("/p/:slug/api/session", (c) => {
     const slug = c.req.param("slug");
-    const session = reviewerOk(c, config, slug);
+    const session = reviewerOk(c, db, config, slug);
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const project = getProjectBySlug(db, slug);
     if (!project) return c.json({ error: "not found" }, 404);
@@ -244,7 +301,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
 
   app.get("/p/:slug/api/history", async (c) => {
     const slug = c.req.param("slug");
-    const session = reviewerOk(c, config, slug);
+    const session = reviewerOk(c, db, config, slug);
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const project = getProjectBySlug(db, slug);
     if (!project) return c.json({ error: "not found" }, 404);
@@ -261,13 +318,13 @@ export function createApp(db: Database.Database, config: Config): Hono {
       );
       return c.json({ history: entries });
     } catch (err) {
-      return c.json({ error: err instanceof Error ? err.message : "history failed" }, 400);
+      return c.json({ error: publicError(err, "history failed") }, 400);
     }
   });
 
   app.get("/p/:slug/api/comments", (c) => {
     const slug = c.req.param("slug");
-    const session = reviewerOk(c, config, slug);
+    const session = reviewerOk(c, db, config, slug);
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const variant = c.req.query("variant");
     if (!variant) return c.json({ error: "variant required" }, 400);
@@ -281,7 +338,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
 
   app.post("/p/:slug/api/comments", async (c) => {
     const slug = c.req.param("slug");
-    const session = reviewerOk(c, config, slug);
+    const session = reviewerOk(c, db, config, slug);
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const body = await c.req.json<{
       variantKey: string;
@@ -308,13 +365,13 @@ export function createApp(db: Database.Database, config: Config): Hono {
       });
       return c.json({ comment }, 201);
     } catch (err) {
-      return c.json({ error: err instanceof Error ? err.message : "failed" }, 400);
+      return c.json({ error: publicError(err, "failed") }, 400);
     }
   });
 
   app.post("/p/:slug/api/comments/:id/replies", async (c) => {
     const slug = c.req.param("slug");
-    const session = reviewerOk(c, config, slug);
+    const session = reviewerOk(c, db, config, slug);
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const comment = getComment(db, Number(c.req.param("id")));
     if (!comment || comment.project_id !== session.projectId) {
@@ -325,26 +382,30 @@ export function createApp(db: Database.Database, config: Config): Hono {
       const reply = addReply(db, comment.id, session.reviewerId, body.body);
       return c.json({ reply }, 201);
     } catch (err) {
-      return c.json({ error: err instanceof Error ? err.message : "failed" }, 400);
+      return c.json({ error: publicError(err, "failed") }, 400);
     }
   });
 
   app.post("/p/:slug/api/comments/:id/status", async (c) => {
     const slug = c.req.param("slug");
-    const session = reviewerOk(c, config, slug);
+    const session = reviewerOk(c, db, config, slug);
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const comment = getComment(db, Number(c.req.param("id")));
     if (!comment || comment.project_id !== session.projectId) {
       return c.json({ error: "not found" }, 404);
     }
-    const body = await c.req.json<{ status: "open" | "resolved" }>();
-    const updated = setCommentStatus(db, comment.id, body.status);
-    return c.json({ comment: updated });
+    const body = await c.req.json<{ status?: "open" | "resolved" }>().catch(() => ({}));
+    try {
+      const updated = setCommentStatus(db, comment.id, body.status as "open" | "resolved");
+      return c.json({ comment: updated });
+    } catch (err) {
+      return c.json({ error: publicError(err, "failed") }, 400);
+    }
   });
 
   app.get("/p/:slug/bridge.js", (c) => {
     const slug = c.req.param("slug");
-    if (!reviewerOk(c, config, slug)) return c.body("unauthorized", 401);
+    if (!reviewerOk(c, db, config, slug)) return c.body("unauthorized", 401);
     return c.body(bridgeSource, 200, {
       "content-type": "text/javascript; charset=utf-8",
     });
@@ -352,7 +413,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
 
   app.get("/p/:slug/files/:sha/:variantKey/*", async (c) => {
     const slug = c.req.param("slug");
-    const session = reviewerOk(c, config, slug);
+    const session = reviewerOk(c, db, config, slug);
     if (!session) return c.body("unauthorized", 401);
     const project = getProjectBySlug(db, slug);
     if (!project) return c.body("not found", 404);
@@ -372,7 +433,7 @@ export function createApp(db: Database.Database, config: Config): Hono {
       );
       root = path.join(checkout, variant.git_path);
     } catch (err) {
-      return c.body(err instanceof Error ? err.message : "checkout failed", 400);
+      return c.body(publicError(err, "checkout failed"), 400);
     }
     const rest = c.req.path.replace(`/p/${slug}/files/${c.req.param("sha")}/${c.req.param("variantKey")}`, "");
     const file = resolvePreviewFile(root, rest);
@@ -384,7 +445,9 @@ export function createApp(db: Database.Database, config: Config): Hono {
       );
       return c.body(html, 200, { "content-type": "text/html; charset=utf-8" });
     }
-    return c.body(fs.readFileSync(file), 200, { "content-type": mimeType(file) });
+    const headers: Record<string, string> = { "content-type": mimeType(file) };
+    if (file.endsWith(".svg")) headers["content-security-policy"] = "sandbox";
+    return c.body(fs.readFileSync(file), 200, headers);
   });
 
   return app;

@@ -27,6 +27,24 @@ function repoId(gitUrl: string): string {
   return createHash("sha256").update(gitUrl).digest("hex").slice(0, 16);
 }
 
+export function assertGitRemote(value: string): void {
+  if (!value || /[\0\r\n]/.test(value) || value.startsWith("-") || value.includes("://-")) {
+    throw new Error("invalid git url");
+  }
+  const allowed =
+    value.startsWith("https://") ||
+    value.startsWith("ssh://") ||
+    value.startsWith("git@") ||
+    value.startsWith("/");
+  if (!allowed) throw new Error("invalid git url");
+}
+
+export function assertGitRevision(value: string): void {
+  if (!value || value.startsWith("-") || /[\0\r\n\s]/.test(value)) {
+    throw new Error("invalid branch");
+  }
+}
+
 function gitEnv(sshKeyPath?: string | null): NodeJS.ProcessEnv {
   const env = { ...process.env };
   if (sshKeyPath) {
@@ -65,11 +83,13 @@ export function checkoutDir(dataDir: string, projectId: number, sha: string): st
 }
 
 export async function syncProject(dataDir: string, project: ProjectGit): Promise<void> {
+  assertGitRemote(project.git_url);
+  assertGitRevision(project.branch);
   const dest = cloneDir(dataDir, project.git_url);
   if (!fs.existsSync(path.join(dest, "HEAD"))) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     await runGit(
-      ["clone", "--bare", project.git_url, dest],
+      ["clone", "--bare", "--", project.git_url, dest],
       path.dirname(dest),
       project.ssh_key_path,
     );
@@ -94,8 +114,15 @@ export async function history(
   project: ProjectGit,
   variants: Variant[],
 ): Promise<HistoryEntry[]> {
+  assertGitRemote(project.git_url);
+  assertGitRevision(project.branch);
   const dest = cloneDir(dataDir, project.git_url);
   const paths = [...new Set(variants.map((v) => v.git_path).filter(Boolean))];
+  for (const gitPath of paths) {
+    if (!gitPath || gitPath.startsWith("-") || /[\0\r\n]/.test(gitPath)) {
+      throw new Error("invalid path");
+    }
+  }
   const formatArgs = ["log", "--format=%H%x09%s%x09%cI"];
   try {
     return parseLog(

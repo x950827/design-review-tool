@@ -19,6 +19,12 @@ test("COOKIE_SECURE can be enabled for production", () => {
   expect(loadConfig({ ...required, COOKIE_SECURE: "yes" }).cookieSecure).toBe(true);
 });
 
+test("TRUST_PROXY defaults to false and can be enabled", () => {
+  expect(loadConfig(required).trustProxy).toBe(false);
+  expect(loadConfig({ ...required, TRUST_PROXY: "true" }).trustProxy).toBe(true);
+  expect(() => loadConfig({ ...required, TRUST_PROXY: "maybe" })).toThrow(/TRUST_PROXY/);
+});
+
 test("COOKIE_SECURE rejects unknown values", () => {
   expect(() => loadConfig({ ...required, COOKIE_SECURE: "secure" })).toThrow(
     /COOKIE_SECURE/,

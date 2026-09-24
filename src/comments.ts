@@ -57,6 +57,7 @@ function assertViewport(n: number): asserts n is Viewport {
 export function createComment(db: Database.Database, input: CommentInput): CommentRow {
   const body = input.body.trim();
   if (!body) throw new Error("body required");
+  if (body.length > 8000) throw new Error("body too long");
   assertViewport(input.viewport);
   if (!["element", "rect", "page"].includes(input.kind)) {
     throw new Error("invalid kind");
@@ -121,6 +122,7 @@ export function addReply(
 ): ReplyRow {
   const text = body.trim();
   if (!text) throw new Error("body required");
+  if (text.length > 8000) throw new Error("body too long");
   const created_at = new Date().toISOString();
   const result = db
     .prepare("INSERT INTO replies (comment_id, reviewer_id, body, created_at) VALUES (?, ?, ?, ?)")
@@ -152,6 +154,7 @@ export function setCommentStatus(
   commentId: number,
   status: CommentStatus,
 ): CommentRow {
+  if (status !== "open" && status !== "resolved") throw new Error("invalid status");
   const resolved_at = status === "resolved" ? new Date().toISOString() : null;
   db.prepare("UPDATE comments SET status = ?, resolved_at = ? WHERE id = ?").run(
     status,

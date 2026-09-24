@@ -1,9 +1,16 @@
 # Design Review Tool
 
-Self-hosted HTML design review: named logins, live git preview, A/B, 390/768/1440, pin / highlight / page threads.
+[Русский](README.ru.md)
 
-**How to use it** (humans and agents): [docs/usage.md](docs/usage.md).  
-Agents working in this repo: [AGENTS.md](AGENTS.md).
+Self-hosted review for HTML that lives in git. An admin connects a repository, reviewers open a named login, and comments stick to an element, a highlight, or the page. React is only the frame around the preview. The design stays HTML in an iframe.
+
+## Features
+
+- Named reviewer accounts. No public signup.
+- Live preview of a git commit, including private remotes via a deploy key.
+- Variant switch (A/B), widths 390 / 768 / 1440.
+- Three comment kinds: element pin, rectangle highlight, unanchored page note.
+- JSON export of open threads for a person or an agent fixing the design.
 
 ## Run
 
@@ -15,15 +22,24 @@ npm run build:web
 ADMIN_PASSWORD=... SESSION_SECRET=... npm run dev
 ```
 
-Open `http://127.0.0.1:8787/admin`. Create a project (private git URL + variant folder paths), add reviewer name+password, press **Sync git**. Client URL: `/p/<slug>`.
+`SESSION_SECRET` must be at least 16 characters. Open `http://127.0.0.1:8787/admin`, create a project (git URL and variant folder paths), add a reviewer, press **Sync git**. The review URL is `/p/<slug>`.
 
-Local cookies are not `Secure` (`COOKIE_SECURE=false`). Production recipe: [docs/deploy.md](docs/deploy.md) (`HOST=0.0.0.0` inside the container, compose publishes `127.0.0.1:8787` only, `COOKIE_SECURE=true`, persistent `DATA_DIR`, HTTPS reverse proxy). Do not bake passwords or an SSH deploy key into the image; private git uses `compose.ssh.yaml` (`./secrets/git_ssh` → `/run/secrets/git_ssh`).
+Local cookies are not `Secure` (`COOKIE_SECURE=false`). After `web/` changes, run `npm run build:web` again. Restart the process after editing `src/bridge.js` or `src/pin-target.js`.
 
-After `web/` changes run `npm run build:web` again. Restart the process if you edited `src/bridge.js` or `src/pin-target.js`.
+Day-to-day review flow, in Russian: [docs/usage.md](docs/usage.md). Agents working in this repository: [AGENTS.md](AGENTS.md).
 
-## Spec / plan
+## Production
 
-- `docs/superpowers/specs/2026-09-15-design-review-portal-design.md`
-- `docs/superpowers/plans/2026-09-15-design-review-portal.md`
+[docs/deploy.md](docs/deploy.md). The container listens on `0.0.0.0`; Compose publishes `127.0.0.1:8787` only. Put TLS on a reverse proxy, set `COOKIE_SECURE=true` and `TRUST_PROXY=true`, and keep SQLite plus git checkouts in `DATA_DIR`. Do not bake passwords or an SSH key into the image. Private git uses `compose.ssh.yaml` (`./secrets/git_ssh` mounted at `/run/secrets/git_ssh`).
 
-The live UI (floating pin card, highlight note bar, `+` for unanchored comments) is the source of truth where it differs from the original spec.
+## Contributing
+
+Pull requests are accepted only from forks. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Security
+
+[SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE). This repository is an application, not an npm library (`"private": true`).

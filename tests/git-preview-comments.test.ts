@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { checkoutSha, history, syncProject } from "../src/git.ts";
+import { assertGitRemote, checkoutSha, history, syncProject } from "../src/git.ts";
 import { injectBridge, resolvePreviewFile } from "../src/preview.ts";
 import { openDb } from "../src/db.ts";
 import { createReviewer } from "../src/auth.ts";
@@ -71,6 +71,17 @@ test("resolvePreviewFile blocks traversal and finds assets", () => {
   expect(resolvePreviewFile(root, "assets/pixel.png")).toContain("pixel.png");
   expect(resolvePreviewFile(root, "../secret")).toBeNull();
   expect(resolvePreviewFile(root, "/etc/passwd")).toBeNull();
+  const outside = path.join(path.dirname(root), "secret.txt");
+  fs.writeFileSync(outside, "nope");
+  fs.symlinkSync(outside, path.join(root, "leak.txt"));
+  expect(resolvePreviewFile(root, "leak.txt")).toBeNull();
+});
+
+test("git remotes reject option injection", () => {
+  expect(() => assertGitRemote("--upload-pack=touch")).toThrow(/invalid git url/);
+  expect(() => assertGitRemote("ext::sh -c id")).toThrow(/invalid git url/);
+  assertGitRemote("https://github.com/example/design-review-tool.git");
+  assertGitRemote("/tmp/repo");
 });
 
 test("injectBridge inserts before body close", () => {

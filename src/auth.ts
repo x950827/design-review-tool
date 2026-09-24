@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import bcrypt from "bcryptjs";
 import type Database from "better-sqlite3";
 
@@ -122,9 +122,9 @@ export async function loginAdmin(
   password: string,
   adminPassword: string,
 ): Promise<AdminSession | null> {
-  const a = Buffer.from(password);
-  const b = Buffer.from(adminPassword);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  const a = createHash("sha256").update(password).digest();
+  const b = createHash("sha256").update(adminPassword).digest();
+  if (!timingSafeEqual(a, b)) return null;
   return { kind: "admin", exp: sessionExpiry() };
 }
 
@@ -141,8 +141,20 @@ export async function resetReviewerPassword(
   reviewerId: number,
   password: string,
 ): Promise<void> {
+  if (!password) throw new Error("password required");
   const password_hash = await hashPassword(password);
   db.prepare("UPDATE reviewers SET password_hash = ? WHERE id = ?").run(password_hash, reviewerId);
+}
+
+export function reviewerIsActive(
+  db: Database.Database,
+  reviewerId: number,
+  projectId: number,
+): boolean {
+  const row = db
+    .prepare("SELECT disabled FROM reviewers WHERE id = ? AND project_id = ?")
+    .get(reviewerId, projectId) as { disabled: number } | undefined;
+  return Boolean(row) && row!.disabled === 0;
 }
 
 export class LoginLimiter {
@@ -162,6 +174,13 @@ export class LoginLimiter {
     }
     next.push(now);
     this.hits.set(key, next);
+    if (this.hits.size > 4096) {
+      for (const [stored, times] of this.hits) {
+        if (times.every((t) => t <= cutoff)) this.hits.delete(stored);
+      }
+      if (this.hits.size > 4096) this.hits.clear();
+      this.hits.set(key, next);
+    }
     return true;
   }
 }

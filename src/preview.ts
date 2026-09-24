@@ -9,8 +9,17 @@ export function resolvePreviewFile(root: string, requestPath: string): string | 
   if (resolved !== rootResolved && !resolved.startsWith(rootResolved + path.sep)) {
     return null;
   }
-  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) return null;
-  return resolved;
+  let realRoot: string;
+  let realFile: string;
+  try {
+    realRoot = fs.realpathSync(rootResolved);
+    realFile = fs.realpathSync(resolved);
+  } catch {
+    return null;
+  }
+  if (realFile !== realRoot && !realFile.startsWith(realRoot + path.sep)) return null;
+  if (!fs.statSync(realFile).isFile()) return null;
+  return realFile;
 }
 
 export function injectBridge(html: string, bridgeSrc: string): string {

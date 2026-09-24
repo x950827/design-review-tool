@@ -8,14 +8,19 @@ export type Config = {
   dataDir: string;
   sshKeyPath?: string;
   cookieSecure: boolean;
+  trustProxy: boolean;
 };
 
-export function parseCookieSecure(raw: string | undefined): boolean {
+export function parseFlag(raw: string | undefined, name: string): boolean {
   if (raw == null || raw.trim() === "") return false;
   const value = raw.trim().toLowerCase();
   if (value === "true" || value === "1" || value === "yes" || value === "on") return true;
   if (value === "false" || value === "0" || value === "no" || value === "off") return false;
-  throw new Error("COOKIE_SECURE must be true or false");
+  throw new Error(`${name} must be true or false`);
+}
+
+export function parseCookieSecure(raw: string | undefined): boolean {
+  return parseFlag(raw, "COOKIE_SECURE");
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -35,5 +40,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dataDir: path.resolve(env.DATA_DIR ?? "data"),
     sshKeyPath: env.GIT_SSH_KEY,
     cookieSecure: parseCookieSecure(env.COOKIE_SECURE),
+    trustProxy: parseFlag(env.TRUST_PROXY, "TRUST_PROXY"),
   };
 }

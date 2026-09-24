@@ -1,0 +1,16 @@
+name: forks-only
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  fork:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Accept pull requests from forks only
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}" ]; then
+            echo "Pull requests are accepted only from forks."
+            exit 1
+          fi

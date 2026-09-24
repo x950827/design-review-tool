@@ -1,7 +1,12 @@
 {
   "name": "design-review-tool",
   "version": "0.1.0",
+  "description": "Self-hosted HTML design review: git preview, named reviewers, pin and highlight comments.",
+  "license": "MIT",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",

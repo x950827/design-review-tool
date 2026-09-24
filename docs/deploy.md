@@ -30,6 +30,7 @@ HOST=0.0.0.0
 PORT=8787
 DATA_DIR=/app/data
 COOKIE_SECURE=true
+TRUST_PROXY=true
 ADMIN_PASSWORD=<runtime-only>
 SESSION_SECRET=<runtime-only-16-plus-chars>
 # Private git via compose.ssh.yaml — do not set a host path here:
@@ -113,11 +114,11 @@ ports:
 
 Without HTTPS, passwords travel in the clear. Do not publish port 8787 on `0.0.0.0` or the public internet.
 
-The reverse proxy must send `X-Forwarded-For` (Caddy `reverse_proxy` does this by default; the nginx snippet above uses `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`). Login rate limiting keys off that header.
+Set `TRUST_PROXY=true` when this proxy is the only way in, and have it overwrite `X-Forwarded-For` (Caddy `reverse_proxy` does this by default; the nginx snippet above uses `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`). With `TRUST_PROXY` left false, the login limiter uses the socket address and ignores that header.
 
 ## Login rate limit
 
-`LoginLimiter` is already in the process. It caps `POST /admin/api/login` and `POST /p/:slug/api/login` at **10 attempts per 60 seconds** per key. The key is `X-Forwarded-For` plus a scope: `admin` for the admin endpoint, the project slug for a reviewer login. Missing `X-Forwarded-For` collapses every client onto the literal key `ip`, so they share one bucket.
+`LoginLimiter` is already in the process. It caps `POST /admin/api/login` and `POST /p/:slug/api/login` at **10 attempts per 60 seconds** per key. The key is the client address plus a scope: `admin` for the admin endpoint, the project slug for a reviewer login. The address is the socket peer, or the first `X-Forwarded-For` hop when `TRUST_PROXY=true`.
 
 The limiter is an in-memory map on that Node process. One container (the compose recipe) is enough. Several processes or replicas each keep their own counters; put a shared rate limiter in front of them if you run more than one.
 

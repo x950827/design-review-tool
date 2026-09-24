@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import { createReviewer, resetReviewerPassword, setReviewerDisabled } from "./auth.ts";
-import type { Variant } from "./git.ts";
+import { assertGitRemote, assertGitRevision, type Variant } from "./git.ts";
 
 export type Project = {
   id: number;
@@ -29,6 +29,8 @@ export function createProject(
     throw new Error("slug must be lowercase letters, digits and dashes");
   }
   if (!input.variants.length) throw new Error("at least one variant required");
+  assertGitRemote(input.gitUrl);
+  assertGitRevision(input.branch);
   const created_at = new Date().toISOString();
   const result = db
     .prepare(

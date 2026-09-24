@@ -90,12 +90,13 @@ export function ReviewApp({ slug }: { slug: string }) {
     setPending(null);
     previewFrame()?.contentWindow?.postMessage(
       { source: "design-review", type: "set-mode", mode },
-      "*",
+      window.location.origin,
     );
   }, [iframeSrc, viewport]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       if (!event.data || event.data.source !== "design-review-bridge") return;
       if (event.data.type === "pin") {
         setFreeOpen(false);
@@ -149,7 +150,10 @@ export function ReviewApp({ slug }: { slug: string }) {
   function sendMode(next: ReviewMode, frame: HTMLIFrameElement | null = previewFrame()) {
     if (next !== mode) setPending(null);
     setMode(next);
-    frame?.contentWindow?.postMessage({ source: "design-review", type: "set-mode", mode: next }, "*");
+    frame?.contentWindow?.postMessage(
+      { source: "design-review", type: "set-mode", mode: next },
+      window.location.origin,
+    );
   }
 
   function revealComment(comment: Comment) {
@@ -178,8 +182,11 @@ export function ReviewApp({ slug }: { slug: string }) {
     };
     window.setTimeout(() => {
       const frame = previewFrame();
-      frame?.contentWindow?.postMessage({ source: "design-review", type: "set-mode", mode: "browse" }, "*");
-      frame?.contentWindow?.postMessage(payload, "*");
+      frame?.contentWindow?.postMessage(
+        { source: "design-review", type: "set-mode", mode: "browse" },
+        window.location.origin,
+      );
+      frame?.contentWindow?.postMessage(payload, window.location.origin);
     }, 80);
   }
 
@@ -294,7 +301,7 @@ export function ReviewApp({ slug }: { slug: string }) {
                 onLoad={(event) => {
                   event.currentTarget.contentWindow?.postMessage(
                     { source: "design-review", type: "set-mode", mode },
-                    "*",
+                    window.location.origin,
                   );
                 }}
               />

@@ -41,6 +41,7 @@ function setup() {
     sessionSecret: "0123456789abcdef",
     dataDir,
     cookieSecure: false,
+    trustProxy: false,
   };
   const app = createApp(db, config);
   return { db, config, app, dataDir };
@@ -288,6 +289,7 @@ test("admin and reviewer cookies stay HttpOnly Lax and follow COOKIE_SECURE", as
     sessionSecret: "0123456789abcdef",
     dataDir,
     cookieSecure: true,
+    trustProxy: false,
   });
   const projectB = createProject(db, {
     slug: "shop",
@@ -309,4 +311,27 @@ test("admin and reviewer cookies stay HttpOnly Lax and follow COOKIE_SECURE", as
   });
   expect(setCookieFlags(secureAdmin, "dr_admin")).toMatch(/Secure/i);
   expect(setCookieFlags(secureReviewer, "dr_rev_shop")).toMatch(/Secure/i);
+});
+
+test("opening a project clears the admin session cookie", async () => {
+  const { db, app } = setup();
+  createProject(db, {
+    slug: "shop",
+    title: "Shop",
+    gitUrl: "/tmp/x",
+    branch: "main",
+    variants: [{ key: "a", label: "A", git_path: "variant-a" }],
+  });
+  const adminLogin = await app.request("/admin/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ password: "admin-secret" }),
+  });
+  const adminCookie = cookie(adminLogin, "dr_admin");
+  const project = await app.request("/p/shop/api/session", {
+    headers: { cookie: adminCookie },
+  });
+  const cleared = setCookieFlags(project, "dr_admin");
+  expect(cleared).toMatch(/Path=\/admin/i);
+  expect(cleared).toMatch(/Max-Age=0|Expires=/i);
 });
